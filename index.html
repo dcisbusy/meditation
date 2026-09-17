@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sit</title>
-<meta name="description" content="A simple meditation timer with gentle, research-backed habit tracking.">
+<meta name="description" content="A simple practice timer (meditation, bodywork, freewriting) with gentle, research-backed habit tracking and optional cross-device sync.">
 <meta name="theme-color" content="#16302b">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2316302b'/><circle cx='50' cy='50' r='25' fill='%237fb99a'/></svg>">
 <style>
@@ -93,12 +93,38 @@
   section.view { width: 100%; display: none; flex: 1; flex-direction: column; align-items: center; }
   section.view.active { display: flex; }
 
+  /* ---- Category tabs (shared look, used on both views) ---- */
+
+  .category-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    margin: 4px 0 6px;
+  }
+
+  .category-tabs button {
+    background: var(--panel);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .category-tabs button.active { border-color: var(--accent); color: var(--accent); }
+
   /* ---- Timer view ---- */
 
   .mode-toggle {
     display: flex;
     gap: 8px;
-    margin: 18px 0 10px;
+    margin: 14px 0 10px;
   }
 
   .mode-toggle button {
@@ -144,7 +170,7 @@
     position: relative;
     width: min(72vw, 300px);
     height: min(72vw, 300px);
-    margin: 18px 0 22px;
+    margin: 16px 0 22px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -273,6 +299,46 @@
   .data-actions button.danger { color: var(--warn); }
   input[type=file] { display: none; }
 
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
+  .field input {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--accent-soft);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+    font-family: inherit;
+  }
+
+  .sync-actions { display: flex; gap: 10px; margin-top: 6px; }
+  .sync-actions button {
+    flex: 1;
+    background: var(--accent-soft);
+    color: var(--text);
+    border: none;
+    border-radius: 10px;
+    padding: 9px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+
+  .sync-status { font-size: 0.8rem; color: var(--text-dim); margin-top: 10px; }
+  .sync-status.ok { color: var(--accent); }
+  .sync-status.err { color: var(--warn); }
+
+  details.setup-help { margin-top: 12px; font-size: 0.8rem; color: var(--text-dim); }
+  details.setup-help summary { cursor: pointer; color: var(--accent); }
+  details.setup-help ol { padding-left: 18px; margin: 8px 0 0; }
+  details.setup-help li { margin-bottom: 6px; }
+  details.setup-help code {
+    background: var(--bg-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+  }
+
   footer {
     color: var(--text-dim);
     font-size: 0.65rem;
@@ -297,6 +363,12 @@
   </header>
 
   <section id="timerView" class="view active">
+    <nav class="category-tabs" id="timerCatRow">
+      <button data-cat="meditation">🧘 Meditation</button>
+      <button data-cat="bodywork">🤸 Bodywork</button>
+      <button data-cat="freewriting">✍️ Freewriting</button>
+    </nav>
+
     <div class="mode-toggle">
       <button id="modeUpBtn" class="active" data-mode="up">Count up</button>
       <button id="modeDownBtn" data-mode="down">Count down</button>
@@ -330,9 +402,16 @@
   <section id="statsView" class="view">
     <div class="stats-scroll">
 
+      <nav class="category-tabs" id="statsCatRow">
+        <button data-cat="all">🌐 All</button>
+        <button data-cat="meditation">🧘 Meditation</button>
+        <button data-cat="bodywork">🤸 Bodywork</button>
+        <button data-cat="freewriting">✍️ Freewriting</button>
+      </nav>
+
       <div class="card">
         <h2>Your habit journey</h2>
-        <div id="journeyMsg" class="journey-msg">Log your first sit to start tracking.</div>
+        <div id="journeyMsg" class="journey-msg">Log your first session to start tracking.</div>
         <div class="journey-bar-track"><div id="journeyBarFill" class="journey-bar-fill" style="width:0%"></div></div>
         <div class="journey-range"><span>Day 0</span><span>~66 days (avg.)</span><span>Day 254</span></div>
       </div>
@@ -354,12 +433,41 @@
 
       <div class="card">
         <h2>Recent sessions</h2>
-        <div id="historyList" class="history-list"><div class="empty-state">Nothing yet — your first sit will show up here.</div></div>
+        <div id="historyList" class="history-list"><div class="empty-state">Nothing yet — your first session will show up here.</div></div>
       </div>
 
       <div class="card">
-        <h2>Your data</h2>
-        <div class="session-note" style="margin-bottom:8px;">Stored only in this browser (localStorage) — nothing is sent anywhere. Export a backup if you want it to survive a browser reset or move to another device.</div>
+        <h2>Sync across devices</h2>
+        <div class="session-note" style="margin-bottom:10px;">Optional: back this app with a Google Sheet so every device shares the same log, and you can browse the raw data yourself in Sheets.</div>
+        <div class="field">
+          <label for="syncUrlInput">Web App URL</label>
+          <input id="syncUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="syncSecretInput">Shared secret</label>
+          <input id="syncSecretInput" type="text" placeholder="the SECRET value from your script" autocomplete="off">
+        </div>
+        <div class="sync-actions">
+          <button id="syncSaveBtn">Save &amp; test</button>
+          <button id="syncNowBtn">Sync now</button>
+        </div>
+        <div id="syncStatus" class="sync-status">Not connected — set up a Google Sheet to sync across devices.</div>
+        <details class="setup-help">
+          <summary>How do I set this up?</summary>
+          <ol>
+            <li>Create a new Google Sheet (any name).</li>
+            <li><b>Extensions → Apps Script</b>, delete the placeholder code, and paste in the script from this app's repo: <code>apps-script/Code.gs</code>. Change the <code>SECRET</code> value at the top to a password only you know.</li>
+            <li><b>Deploy → New deployment</b> → type <b>Web app</b> → Execute as <b>Me</b> → Who has access <b>Anyone</b> → <b>Deploy</b>. Authorize it with your Google account when prompted.</li>
+            <li>Copy the Web App URL it gives you (ends in <code>/exec</code>).</li>
+            <li>Paste that URL and your <code>SECRET</code> above, then <b>Save &amp; test</b>.</li>
+            <li>Do the same paste on every other device/browser — they'll all read and write the same Sheet.</li>
+          </ol>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2>Local backup</h2>
+        <div class="session-note" style="margin-bottom:8px;">This device's copy lives in its browser (localStorage). If you're not using sync above, export a backup now and then so a browser reset can't lose it.</div>
         <div class="data-actions">
           <button id="exportBtn">Export backup</button>
           <button id="importBtn">Import backup</button>
@@ -371,7 +479,7 @@
     </div>
   </section>
 
-  <footer id="versionFooter">Sit · a tiny meditation timer</footer>
+  <footer id="versionFooter">Sit · meditation, bodywork &amp; freewriting timer</footer>
 </div>
 
 <script>
@@ -379,9 +487,20 @@
   "use strict";
 
   var STORAGE_KEY = "sit.sessions.v1";
+  var SETTINGS_KEY = "sit.settings.v1";
+  var SYNC_KEY = "sit.sync.v1";
   var CIRC = 2 * Math.PI * 98;
 
+  var CATEGORY_META = {
+    all: { label: "All", icon: "🌐", noun: "session", verb: "Practicing" },
+    meditation: { label: "Meditation", icon: "🧘", noun: "sit", verb: "Sitting" },
+    bodywork: { label: "Bodywork", icon: "🤸", noun: "session", verb: "Moving" },
+    freewriting: { label: "Freewriting", icon: "✍️", noun: "session", verb: "Writing" }
+  };
+
   // ---------- persistence ----------
+
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
   function loadSessions() {
     try {
@@ -395,9 +514,42 @@
   }
 
   function addSession(session) {
+    session.id = genId();
+    session.synced = false;
     var sessions = loadSessions();
     sessions.push(session);
     saveSessions(sessions);
+    return session;
+  }
+
+  function sessionCategory(s) { return s.category || "meditation"; }
+
+  function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function saveSettings(s) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {} }
+
+  function loadSyncConfig() {
+    try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || null; } catch (e) { return null; }
+  }
+  function saveSyncConfig(cfg) { try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) {} }
+
+  function keyFor(s) {
+    return s.id || (s.completedAt + "|" + s.durationSeconds + "|" + sessionCategory(s));
+  }
+
+  function mergeSessions(existing, incoming) {
+    var byKey = {};
+    existing.forEach(function (s) { byKey[keyFor(s)] = s; });
+    incoming.forEach(function (s) {
+      var k = keyFor(s);
+      if (!byKey[k]) {
+        if (!s.id) s.id = genId();
+        byKey[k] = s;
+        existing.push(s);
+      }
+    });
+    return existing;
   }
 
   // ---------- timer state ----------
@@ -409,8 +561,11 @@
   var accumulatedMs = 0;      // elapsed before the current run (paused time)
   var startedAtIso = null;    // ISO timestamp of the very first Start press this session
   var tickHandle = null;
-  var completedByTimeout = false;
   var chimeCtx = null;
+
+  var settings = loadSettings();
+  var timerCategory = CATEGORY_META[settings.timerCategory] && settings.timerCategory !== "all" ? settings.timerCategory : "meditation";
+  var statsCategory = CATEGORY_META[settings.statsCategory] ? settings.statsCategory : "all";
 
   var timeDisplay = document.getElementById("timeDisplay");
   var timeSub = document.getElementById("timeSub");
@@ -420,6 +575,8 @@
   var resetBtn = document.getElementById("resetBtn");
   var sessionNote = document.getElementById("sessionNote");
   var presetRow = document.getElementById("presetRow");
+  var timerCatRow = document.getElementById("timerCatRow");
+  var statsCatRow = document.getElementById("statsCatRow");
 
   dialProgress.setAttribute("stroke-dasharray", CIRC.toFixed(1));
 
@@ -459,6 +616,7 @@
 
   function tick() { render(); }
 
+  // A short bright chime for a session you actively ended yourself.
   function playChime() {
     try {
       if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -478,6 +636,63 @@
       });
     } catch (e) {}
     if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) {} }
+  }
+
+  // A deeper, longer gong for a countdown that finished on its own —
+  // synthesized (no audio file) from inharmonic partials over a noise
+  // strike transient, so it needs no hosting and works offline.
+  function playGong() {
+    try {
+      if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = chimeCtx;
+      var now = ctx.currentTime;
+
+      var master = ctx.createGain();
+      master.gain.value = 0.9;
+      var lowpass = ctx.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.frequency.setValueAtTime(6500, now);
+      lowpass.frequency.exponentialRampToValueAtTime(650, now + 5.5);
+      master.connect(lowpass);
+      lowpass.connect(ctx.destination);
+
+      var noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.25), ctx.sampleRate);
+      var data = noiseBuffer.getChannelData(0);
+      for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      var noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      var noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = "bandpass";
+      noiseFilter.frequency.value = 450;
+      noiseFilter.Q.value = 0.6;
+      var noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.4, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      noise.connect(noiseFilter).connect(noiseGain).connect(master);
+      noise.start(now);
+
+      var baseFreq = 138;
+      var partials = [1, 1.5, 2.0, 2.76, 3.31, 4.07];
+      var decays = [5.5, 4.8, 4.2, 3.4, 2.6, 1.8];
+      var amps = [0.5, 0.35, 0.3, 0.18, 0.12, 0.08];
+
+      partials.forEach(function (ratio, idx) {
+        [-3, 3].forEach(function (centsOffset) {
+          var osc = ctx.createOscillator();
+          osc.type = "sine";
+          osc.frequency.value = baseFreq * ratio * Math.pow(2, centsOffset / 1200);
+          var gain = ctx.createGain();
+          var peak = amps[idx] * 0.5;
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.linearRampToValueAtTime(peak, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0005, now + decays[idx]);
+          osc.connect(gain).connect(master);
+          osc.start(now);
+          osc.stop(now + decays[idx] + 0.2);
+        });
+      });
+    } catch (e) {}
+    if (navigator.vibrate) { try { navigator.vibrate([200, 80, 200, 80, 200]); } catch (e) {} }
   }
 
   function setModeUI() {
@@ -508,12 +723,41 @@
   });
   pickPreset(300, presetRow.children[1]);
 
+  // ---------- category tabs ----------
+
+  function setTimerCategory(cat) {
+    timerCategory = cat;
+    settings.timerCategory = cat;
+    saveSettings(settings);
+    Array.prototype.forEach.call(timerCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === cat); });
+    render();
+  }
+
+  function setStatsCategory(cat) {
+    statsCategory = cat;
+    settings.statsCategory = cat;
+    saveSettings(settings);
+    Array.prototype.forEach.call(statsCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === cat); });
+    refreshStats();
+  }
+
+  Array.prototype.forEach.call(timerCatRow.children, function (btn) {
+    btn.addEventListener("click", function () { if (!running) setTimerCategory(btn.dataset.cat); });
+  });
+  Array.prototype.forEach.call(statsCatRow.children, function (btn) {
+    btn.addEventListener("click", function () { setStatsCategory(btn.dataset.cat); });
+  });
+  // Just paint the initial active state here — don't call setTimerCategory/
+  // setStatsCategory yet, since setStatsCategory triggers refreshStats(),
+  // which needs BADGES (defined further down this script) to already exist.
+  Array.prototype.forEach.call(timerCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === timerCategory); });
+  Array.prototype.forEach.call(statsCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === statsCategory); });
+
   function resetTimerState() {
     accumulatedMs = 0;
     startedAtMs = null;
     startedAtIso = null;
     running = false;
-    completedByTimeout = false;
     clearInterval(tickHandle);
     startPauseBtn.textContent = "Start";
     startPauseBtn.classList.remove("btn-danger");
@@ -532,7 +776,8 @@
     startPauseBtn.textContent = "Pause";
     stopBtn.hidden = mode !== "up";
     resetBtn.hidden = false;
-    sessionNote.textContent = mode === "up" ? "Sitting… press Finish when you're done." : "Sitting…";
+    var verb = CATEGORY_META[timerCategory].verb;
+    sessionNote.textContent = mode === "up" ? verb + "… press Finish when you're done." : verb + "…";
     render();
   }
 
@@ -545,8 +790,7 @@
   }
 
   startPauseBtn.addEventListener("click", function () {
-    if (!running && startPauseBtn.textContent === "Start") startRun();
-    else if (!running) startRun();
+    if (!running) startRun();
     else pauseRun();
   });
 
@@ -565,20 +809,28 @@
 
     if (secs < 10) {
       sessionNote.textContent = "Too short to log — but no pressure, come back anytime.";
-      resetTimerState();
+      startPauseBtn.hidden = true;
+      stopBtn.hidden = true;
+      resetBtn.hidden = true;
+      setTimeout(resetTimerState, 1800);
       return;
     }
 
-    addSession({
+    var created = addSession({
       startedAt: startedAtIso,
       completedAt: new Date().toISOString(),
       durationSeconds: Math.round(secs),
       mode: mode,
       targetSeconds: mode === "down" ? targetSecs : null,
-      completedFull: mode === "down" ? byTimeout : true
+      completedFull: mode === "down" ? byTimeout : true,
+      category: timerCategory
     });
 
-    playChime();
+    if (mode === "down" && byTimeout) playGong(); else playChime();
+
+    var cfg = loadSyncConfig();
+    if (cfg && cfg.url) pushSession(cfg, created);
+
     sessionNote.textContent = encouragingLine(secs);
     startPauseBtn.hidden = true;
     stopBtn.hidden = true;
@@ -595,7 +847,7 @@
   function encouragingLine(secs) {
     var mins = secs / 60;
     if (mins < 3) return "Logged. Showing up is what counts — well done.";
-    if (mins < 7) return "Nice sit. Every session adds up.";
+    if (mins < 7) return "Nice one — every session adds up.";
     return "Great session — that's real practice.";
   }
 
@@ -608,6 +860,7 @@
   var tabStatsBtn = document.getElementById("tabStatsBtn");
   var timerView = document.getElementById("timerView");
   var statsView = document.getElementById("statsView");
+  var lastAutoPull = 0;
 
   tabTimerBtn.addEventListener("click", function () {
     tabTimerBtn.classList.add("active"); tabStatsBtn.classList.remove("active");
@@ -617,6 +870,11 @@
     tabStatsBtn.classList.add("active"); tabTimerBtn.classList.remove("active");
     statsView.classList.add("active"); timerView.classList.remove("active");
     refreshStats();
+    var cfg = loadSyncConfig();
+    if (cfg && cfg.url && Date.now() - lastAutoPull > 15000) {
+      lastAutoPull = Date.now();
+      pullRemote(cfg, true);
+    }
   });
 
   // ---------- stats / gamification ----------
@@ -655,8 +913,6 @@
     if (practiceDays.length) {
       var cursor = new Date(today);
       var graceUsed = false;
-      // if today has no session yet, start checking from yesterday but don't
-      // penalise "haven't sat yet today"
       var cursorHasSession = practiceDaySet[cursor.getFullYear() + "-" + (cursor.getMonth() + 1) + "-" + cursor.getDate()];
       if (!cursorHasSession) cursor.setDate(cursor.getDate() - 1);
 
@@ -698,73 +954,77 @@
     return h + "h " + (m ? m + "m" : "");
   }
 
-  function journeyMessage(stats) {
+  function journeyMessage(stats, meta) {
+    var noun = meta.noun;
     if (stats.totalSessions === 0) {
-      return "Log your first sit to start tracking. Research on habit formation (Lally et al.) found even a few minutes, done regularly, is what builds automaticity — not long sessions.";
+      return "Log your first " + noun + " to start tracking. Research on habit formation (Lally et al.) found even a few minutes, done regularly, is what builds automaticity — not long sessions.";
     }
     var d = stats.daysSinceStart;
     if (d < 18) {
-      return "Day " + d + " since your first sit. Studies suggest new habits take at least 18 days to start feeling automatic — you're still early, and that's exactly where everyone starts.";
+      return "Day " + d + " since your first " + noun + ". Studies suggest new habits take at least 18 days to start feeling automatic — you're still early, and that's exactly where everyone starts.";
     }
     if (d < 66) {
-      return "Day " + d + " since your first sit — past the earliest automaticity threshold (18 days) and heading toward the average (~66 days). Missed a day here and there? That's normal and doesn't undo the progress.";
+      return "Day " + d + " since your first " + noun + " — past the earliest automaticity threshold (18 days) and heading toward the average (~66 days). Missed a day here and there? That's normal and doesn't undo the progress.";
     }
     if (d < 254) {
-      return "Day " + d + " since your first sit. You're beyond the average time it takes for a habit to become automatic — many people are fully there by now. Some take up to 254 days, so keep going at whatever pace fits.";
+      return "Day " + d + " since your first " + noun + ". You're beyond the average time it takes for a habit to become automatic — many people are fully there by now. Some take up to 254 days, so keep going at whatever pace fits.";
     }
-    return "Day " + d + " since your first sit. Well past the full research range for automaticity (18-254 days) — this is very likely just part of your routine now.";
+    return "Day " + d + " since your first " + noun + ". Well past the full research range for automaticity (18-254 days) — this is very likely just part of your routine now.";
   }
 
   function refreshStats() {
-    var sessions = loadSessions();
+    var allSessions = loadSessions();
+    var sessions = statsCategory === "all" ? allSessions : allSessions.filter(function (s) { return sessionCategory(s) === statsCategory; });
     var stats = computeStats(sessions);
+    var meta = CATEGORY_META[statsCategory];
 
     document.getElementById("statTotalSessions").textContent = stats.totalSessions;
     document.getElementById("statTotalTime").textContent = fmtDuration(stats.totalSeconds);
     document.getElementById("statStreak").textContent = stats.streak;
     document.getElementById("statActiveDays").textContent = stats.activeDays30;
 
-    document.getElementById("journeyMsg").textContent = journeyMessage(stats);
+    document.getElementById("journeyMsg").textContent = journeyMessage(stats, meta);
     var pct = Math.max(0, Math.min(100, (stats.daysSinceStart / 254) * 100));
     document.getElementById("journeyBarFill").style.width = pct + "%";
 
-    renderBadges(stats);
-    renderHistory(sessions);
+    renderBadges(stats, meta);
+    renderHistory(sessions, meta);
   }
 
   var BADGES = [
-    { id: "first", icon: "🌱", label: "First sit", test: function (s) { return s.totalSessions >= 1; } },
-    { id: "five", icon: "🌿", label: "5 sessions", test: function (s) { return s.totalSessions >= 5; } },
-    { id: "twentyfive", icon: "🌳", label: "25 sessions", test: function (s) { return s.totalSessions >= 25; } },
-    { id: "week", icon: "🔥", label: "7 day streak", test: function (s) { return s.streak >= 7; } },
-    { id: "eighteen", icon: "⏳", label: "Day 18 — habit threshold", test: function (s) { return s.daysSinceStart >= 18; } },
-    { id: "avg", icon: "🌀", label: "Day 66 — average automaticity", test: function (s) { return s.daysSinceStart >= 66; } },
-    { id: "hour", icon: "🕐", label: "1 hour total", test: function (s) { return s.totalSeconds >= 3600; } },
-    { id: "active30", icon: "📅", label: "15+ active days in 30", test: function (s) { return s.activeDays30 >= 15; } },
-    { id: "full254", icon: "🏔️", label: "Day 254 — full range", test: function (s) { return s.daysSinceStart >= 254; } }
+    { id: "first", icon: "🌱", label: function (m) { return "First " + m.noun; }, test: function (s) { return s.totalSessions >= 1; } },
+    { id: "five", icon: "🌿", label: function () { return "5 sessions"; }, test: function (s) { return s.totalSessions >= 5; } },
+    { id: "twentyfive", icon: "🌳", label: function () { return "25 sessions"; }, test: function (s) { return s.totalSessions >= 25; } },
+    { id: "week", icon: "🔥", label: function () { return "7 day streak"; }, test: function (s) { return s.streak >= 7; } },
+    { id: "eighteen", icon: "⏳", label: function () { return "Day 18 — habit threshold"; }, test: function (s) { return s.daysSinceStart >= 18; } },
+    { id: "avg", icon: "🌀", label: function () { return "Day 66 — average automaticity"; }, test: function (s) { return s.daysSinceStart >= 66; } },
+    { id: "hour", icon: "🕐", label: function () { return "1 hour total"; }, test: function (s) { return s.totalSeconds >= 3600; } },
+    { id: "active30", icon: "📅", label: function () { return "15+ active days in 30"; }, test: function (s) { return s.activeDays30 >= 15; } },
+    { id: "full254", icon: "🏔️", label: function () { return "Day 254 — full range"; }, test: function (s) { return s.daysSinceStart >= 254; } }
   ];
 
-  function renderBadges(stats) {
+  function renderBadges(stats, meta) {
     var grid = document.getElementById("badgeGrid");
     grid.innerHTML = "";
     BADGES.forEach(function (b) {
       var earned = b.test(stats);
       var el = document.createElement("div");
       el.className = "badge" + (earned ? " earned" : "");
-      el.innerHTML = '<div class="icon">' + b.icon + '</div><div class="label">' + b.label + '</div>';
+      el.innerHTML = '<div class="icon">' + b.icon + '</div><div class="label">' + b.label(meta) + '</div>';
       grid.appendChild(el);
     });
   }
 
-  function renderHistory(sessions) {
+  function renderHistory(sessions, meta) {
     var list = document.getElementById("historyList");
-    if (!sessions.length) { list.innerHTML = '<div class="empty-state">Nothing yet — your first sit will show up here.</div>'; return; }
+    if (!sessions.length) { list.innerHTML = '<div class="empty-state">Nothing yet — your first ' + meta.noun + ' will show up here.</div>'; return; }
     var recent = sessions.slice().sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 25);
     list.innerHTML = recent.map(function (s) {
       var dt = new Date(s.completedAt);
       var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
       var modeLabel = s.mode === "down" ? "countdown" : "count-up";
-      return '<div class="history-item"><span>' + fmtDuration(s.durationSeconds) + ' · ' + modeLabel + '</span><span>' + dateStr + '</span></div>';
+      var catLabel = statsCategory === "all" ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
+      return '<div class="history-item"><span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel + '</span><span>' + dateStr + '</span></div>';
     }).join("");
   }
 
@@ -795,12 +1055,7 @@
         var incoming = Array.isArray(parsed) ? parsed : parsed.sessions;
         if (!Array.isArray(incoming)) throw new Error("bad format");
         var existing = loadSessions();
-        var seen = {};
-        existing.forEach(function (s) { seen[s.completedAt + s.durationSeconds] = true; });
-        incoming.forEach(function (s) {
-          var key = s.completedAt + s.durationSeconds;
-          if (!seen[key]) { existing.push(s); seen[key] = true; }
-        });
+        mergeSessions(existing, incoming);
         saveSessions(existing);
         refreshStats();
         alert("Backup imported.");
@@ -818,6 +1073,97 @@
       refreshStats();
     }
   });
+
+  // ---------- Google Sheets sync ----------
+
+  function setSyncStatus(text, kind) {
+    var el = document.getElementById("syncStatus");
+    el.textContent = text;
+    el.className = "sync-status" + (kind ? " " + kind : "");
+  }
+
+  function normalizeRemoteSession(row) {
+    return {
+      id: row.id || genId(),
+      startedAt: row.startedAt,
+      completedAt: row.completedAt,
+      durationSeconds: Number(row.durationSeconds),
+      mode: row.mode,
+      targetSeconds: row.targetSeconds === "" || row.targetSeconds == null ? null : Number(row.targetSeconds),
+      completedFull: row.completedFull === true || row.completedFull === "TRUE" || row.completedFull === "true",
+      category: row.category || "meditation",
+      synced: true
+    };
+  }
+
+  function pullRemote(cfg, silent) {
+    if (!cfg || !cfg.url) return Promise.resolve();
+    var sep = cfg.url.indexOf("?") === -1 ? "?" : "&";
+    return fetch(cfg.url + sep + "action=list&key=" + encodeURIComponent(cfg.secret || ""))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.error) throw new Error(data.error);
+        var incoming = (data.sessions || []).map(normalizeRemoteSession);
+        var existing = loadSessions();
+        mergeSessions(existing, incoming);
+        saveSessions(existing);
+        cfg.lastSyncedAt = new Date().toISOString();
+        saveSyncConfig(cfg);
+        if (!silent) setSyncStatus("Connected — last synced " + new Date().toLocaleTimeString(), "ok");
+        refreshStats();
+      })
+      .catch(function (e) {
+        if (!silent) setSyncStatus("Couldn't reach that Sheet: " + e.message, "err");
+      });
+  }
+
+  function pushSession(cfg, session) {
+    if (!cfg || !cfg.url) return;
+    fetch(cfg.url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ key: cfg.secret || "", session: session })
+    }).then(function (r) { return r.json(); }).then(function (data) {
+      if (data && data.ok) {
+        var sessions = loadSessions();
+        var found = sessions.filter(function (s) { return s.id === session.id; })[0];
+        if (found) { found.synced = true; saveSessions(sessions); }
+      }
+    }).catch(function () { /* stays unsynced; picked up by the next "Sync now" */ });
+  }
+
+  function syncNow() {
+    var cfg = loadSyncConfig();
+    if (!cfg || !cfg.url) { setSyncStatus("Add a Web App URL first.", "err"); return; }
+    setSyncStatus("Syncing…");
+    pullRemote(cfg, true).then(function () {
+      var sessions = loadSessions();
+      var unsynced = sessions.filter(function (s) { return !s.synced; });
+      unsynced.forEach(function (s) { pushSession(cfg, s); });
+      setSyncStatus("Connected — last synced " + new Date().toLocaleTimeString(), "ok");
+    });
+  }
+
+  document.getElementById("syncSaveBtn").addEventListener("click", function () {
+    var url = document.getElementById("syncUrlInput").value.trim();
+    var secret = document.getElementById("syncSecretInput").value.trim();
+    if (!url) { setSyncStatus("Paste a Web App URL first.", "err"); return; }
+    var cfg = { url: url, secret: secret };
+    saveSyncConfig(cfg);
+    setSyncStatus("Testing…");
+    pullRemote(cfg);
+  });
+  document.getElementById("syncNowBtn").addEventListener("click", syncNow);
+
+  (function initSync() {
+    var cfg = loadSyncConfig();
+    if (cfg) {
+      document.getElementById("syncUrlInput").value = cfg.url || "";
+      document.getElementById("syncSecretInput").value = cfg.secret || "";
+      if (cfg.lastSyncedAt) setSyncStatus("Connected — last synced " + new Date(cfg.lastSyncedAt).toLocaleTimeString(), "ok");
+      pullRemote(cfg, true);
+    }
+  })();
 
   refreshStats();
 

@@ -1,14 +1,23 @@
-# Sit — a tiny meditation timer
+# Sit — a tiny practice timer
 
-A single-page meditation timer, deployed via GitHub Pages. No build step,
-no backend — everything lives in `index.html` and your browser's
-`localStorage`.
+A single-page timer for meditation, bodywork, or freewriting, deployed via
+GitHub Pages. No build step, no required backend — everything lives in
+`index.html` and your browser's `localStorage`, with an optional Google
+Sheets backend for syncing across devices.
 
 ## Features
 
-- **Count up** (default): an open-ended stopwatch for a sit with no fixed length.
-- **Count down**: 2 / 5 / 10 minute presets, finishes itself with a soft chime.
-- **Session log**: every completed sit is timestamped and stored locally.
+- **Three practice categories** — Meditation, Bodywork, Freewriting — each
+  with their own stats page. Pick a category before you start; it's
+  remembered next time you open the app.
+- **Count up** (default): an open-ended stopwatch for a session with no
+  fixed length.
+- **Count down**: 2 / 5 / 10 minute presets. Ends itself with a deep,
+  synthesized gong (no audio file — generated from layered sine partials in
+  the Web Audio API). A manually-ended session (Finish, or a count-up
+  session) plays a lighter chime instead.
+- **Session log**: every completed session is timestamped and stored
+  locally, tagged with its category.
 - **Gentle stats**, based on habit-formation research (Lally et al.):
   - Habits took 18–254 days to become automatic in that research, averaging
     around two months — so the "habit journey" progress bar frames things as
@@ -16,17 +25,48 @@ no backend — everything lives in `index.html` and your browser's
   - Missing an occasional day didn't meaningfully derail habit formation in
     that research, so the streak counter tolerates a single skipped day
     instead of resetting to zero on the first miss.
-  - Badges reward showing up (first sit, session counts, active days) rather
-    than only long sessions — starting small (a few minutes) is the point.
-- **Backup/restore**: export/import your session history as JSON, since
-  `localStorage` is per-browser and can be cleared.
+  - Badges reward showing up (first session, session counts, active days)
+    rather than only long sessions — starting small is the point.
+- **Sync across devices (optional)**: back the app with a Google Sheet so
+  every phone/computer you use shares the same log, and you can browse the
+  raw data yourself in Sheets. See [Setting up sync](#setting-up-sync)
+  below.
+- **Local backup**: export/import your session history as JSON regardless
+  of whether sync is set up.
 
 ## Deploying
 
 Enable GitHub Pages on this repo: **Settings → Pages → Source: Deploy from a
 branch → `main` / `root`**. The site serves directly from `index.html`.
 
+## Setting up sync
+
+GitHub Pages is static hosting — it can't itself store writes from the app.
+Google Sheets (via a small Apps Script "Web app") stands in as the backend,
+and doubles as a place you can browse your own data.
+
+1. Create a new Google Sheet (any name).
+2. In it, go to **Extensions → Apps Script**, delete the placeholder
+   `myFunction` code, and paste in the contents of
+   [`apps-script/Code.gs`](apps-script/Code.gs) from this repo.
+3. In that pasted script, change the `SECRET` constant at the top to a
+   password only you know.
+4. **Deploy → New deployment** → type **Web app** → Execute as **Me** → Who
+   has access **Anyone** → **Deploy**. Authorize it with your Google account
+   when prompted (it's your own script, acting only on this one sheet).
+5. Copy the Web App URL it gives you (ends in `/exec`).
+6. In the app, open **Stats → Sync across devices**, paste that URL and your
+   `SECRET`, then **Save & test**.
+7. Repeat step 6 on every other device/browser — they'll all read and write
+   the same Sheet, and a "Sessions" tab is created there automatically the
+   first time a session is logged.
+
+Sync is pull-on-open and push-on-log, plus a manual **Sync now** button — no
+live sockets, just a plain fetch to the Web App URL, so it works fine from
+a static GitHub Pages site.
+
 ## Privacy
 
-No analytics, no accounts, no network calls. Session data never leaves the
-browser it was recorded in unless you export it yourself.
+No analytics, no accounts. Without sync configured, session data never
+leaves the browser it was recorded in. With sync configured, data goes only
+to the Google Sheet you created and control.
