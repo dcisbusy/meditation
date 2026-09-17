@@ -57,6 +57,11 @@ function getSheet_() {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull']);
   }
+  // Sheets auto-detects ISO-looking strings and silently converts them to
+  // Date cells, which can shift/round the value on every read and break
+  // the app's exact-match sync. Forcing these two columns to plain text
+  // keeps completedAt/startedAt as the literal strings the app sent.
+  sheet.getRange('B:C').setNumberFormat('@');
   return sheet;
 }
 

@@ -283,6 +283,17 @@
     padding-bottom: 6px;
   }
   .history-item span:first-child { color: var(--text); }
+  .history-right { display: flex; align-items: center; gap: 8px; }
+  .history-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+  }
+  .history-delete:hover { color: var(--warn); }
   .empty-state { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 10px 0; }
 
   .data-actions { display: flex; gap: 10px; margin-top: 4px; }
@@ -534,9 +545,16 @@
   }
   function saveSyncConfig(cfg) { try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch (e) {} }
 
-  function keyFor(s) {
-    return s.id || (s.completedAt + "|" + s.durationSeconds + "|" + sessionCategory(s));
+  // Stable, content-derived key — same inputs always produce the same
+  // string, unlike genId() which is random per call. Used both as the
+  // merge/dedupe fallback key and as the id assigned to a remote row that
+  // doesn't carry its own id, so re-pulling the same unchanged row never
+  // creates a new duplicate.
+  function contentKey(s) {
+    return (s.completedAt || "") + "|" + (s.durationSeconds || "") + "|" + sessionCategory(s);
   }
+
+  function keyFor(s) { return s.id || contentKey(s); }
 
   function mergeSessions(existing, incoming) {
     var byKey = {};
@@ -551,6 +569,33 @@
     });
     return existing;
   }
+
+  // One-time cleanup run at startup: collapses any sessions that already
+  // ended up duplicated locally (e.g. from repeated Sheet pulls before a
+  // remote row had a stable id) by exact content match, and backfills a
+  // real id onto any legacy pre-sync session that never got one.
+  function runStartupCleanup() {
+    var sessions = loadSessions();
+    var seen = {};
+    var deduped = [];
+    var changed = false;
+    sessions.forEach(function (s) {
+      var k = contentKey(s);
+      var existing = seen[k];
+      if (existing) {
+        if (s.synced) existing.synced = true;
+        if (!existing.id && s.id) existing.id = s.id;
+        changed = true;
+        return;
+      }
+      if (!s.id) { s.id = genId(); changed = true; }
+      seen[k] = s;
+      deduped.push(s);
+    });
+    if (changed) saveSessions(deduped);
+  }
+
+  runStartupCleanup();
 
   // ---------- timer state ----------
 
@@ -1019,13 +1064,24 @@
     var list = document.getElementById("historyList");
     if (!sessions.length) { list.innerHTML = '<div class="empty-state">Nothing yet — your first ' + meta.noun + ' will show up here.</div>'; return; }
     var recent = sessions.slice().sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 25);
-    list.innerHTML = recent.map(function (s) {
+    list.innerHTML = "";
+    recent.forEach(function (s) {
       var dt = new Date(s.completedAt);
       var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
       var modeLabel = s.mode === "down" ? "countdown" : "count-up";
       var catLabel = statsCategory === "all" ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
-      return '<div class="history-item"><span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel + '</span><span>' + dateStr + '</span></div>';
-    }).join("");
+      var row = document.createElement("div");
+      row.className = "history-item";
+      row.innerHTML = '<span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel +
+        '</span><span class="history-right">' + dateStr +
+        '<button class="history-delete" title="Delete this entry">×</button></span>';
+      row.querySelector(".history-delete").addEventListener("click", function () {
+        if (!confirm("Delete this logged session? If it's also on a synced Sheet, delete it there separately — sync here only ever adds, it doesn't remove.")) return;
+        saveSessions(loadSessions().filter(function (x) { return x.id !== s.id; }));
+        refreshStats();
+      });
+      list.appendChild(row);
+    });
   }
 
   // ---------- backup / restore ----------
@@ -1083,8 +1139,7 @@
   }
 
   function normalizeRemoteSession(row) {
-    return {
-      id: row.id || genId(),
+    var session = {
       startedAt: row.startedAt,
       completedAt: row.completedAt,
       durationSeconds: Number(row.durationSeconds),
@@ -1094,6 +1149,12 @@
       category: row.category || "meditation",
       synced: true
     };
+    // A blank id column (rows written before the id column existed, or by
+    // hand) must resolve to the SAME key on every pull. genId() here would
+    // mint a fresh random id each time and defeat mergeSessions' dedupe,
+    // silently re-adding the same row as a "new" one on every sync.
+    session.id = row.id || contentKey(session);
+    return session;
   }
 
   function pullRemote(cfg, silent) {

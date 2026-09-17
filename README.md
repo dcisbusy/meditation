@@ -65,6 +65,21 @@ Sync is pull-on-open and push-on-log, plus a manual **Sync now** button — no
 live sockets, just a plain fetch to the Web App URL, so it works fine from
 a static GitHub Pages site.
 
+Sync only ever adds rows locally — it never deletes. If you remove a row
+from the Sheet, any device that already pulled it will still show it
+locally; delete it there too using the × on that entry in Recent sessions.
+
+### Updating an already-deployed script
+
+If you set up sync before 2026-09-18, re-paste the current
+[`apps-script/Code.gs`](apps-script/Code.gs) (it fixes a bug where a blank
+`id` cell could make the same row reappear as a duplicate on every sync,
+and forces the timestamp columns to plain text so Sheets can't silently
+reformat them). Pasting new code alone doesn't update a live deployment —
+go to **Deploy → Manage deployments**, click the pencil/edit icon on your
+existing deployment, set **Version: New version**, then **Deploy**. The
+Web App URL stays the same, so nothing needs re-pasting in the app itself.
+
 ## Privacy
 
 No analytics, no accounts. Without sync configured, session data never
