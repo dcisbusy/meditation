@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sit</title>
+<meta name="description" content="A simple meditation timer with gentle, research-backed habit tracking.">
+<meta name="theme-color" content="#16302b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%2316302b'/><circle cx='50' cy='50' r='25' fill='%237fb99a'/></svg>">
+<style>
+  :root {
+    --bg: #0f2420;
+    --bg-2: #16302b;
+    --panel: #1b3a33;
+    --text: #eaf3ef;
+    --text-dim: #a9c4bc;
+    --accent: #7fb99a;
+    --accent-soft: #3f6b5a;
+    --warn: #d9a86c;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: radial-gradient(circle at 50% 0%, var(--bg-2), var(--bg) 70%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+
+  .app {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+
+  header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0;
+    color: var(--text-dim);
+  }
+
+  nav.tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 4px;
+  }
+
+  nav.tabs button {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  nav.tabs button.active {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  section.view { width: 100%; display: none; flex: 1; flex-direction: column; align-items: center; }
+  section.view.active { display: flex; }
+
+  /* ---- Timer view ---- */
+
+  .mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin: 18px 0 10px;
+  }
+
+  .mode-toggle button {
+    background: var(--panel);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .mode-toggle button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .presets {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 6px;
+    min-height: 38px;
+  }
+
+  .presets button {
+    background: var(--panel);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .presets button.active {
+    border-color: var(--warn);
+    color: var(--warn);
+  }
+
+  .dial-wrap {
+    position: relative;
+    width: min(72vw, 300px);
+    height: min(72vw, 300px);
+    margin: 18px 0 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dial-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+
+  .dial-track { fill: none; stroke: var(--panel); stroke-width: 8; }
+  .dial-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.25s linear;
+  }
+
+  .time-display {
+    font-size: 3.1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    z-index: 1;
+  }
+
+  .time-sub { color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; z-index: 1; }
+
+  .controls { display: flex; gap: 14px; margin-bottom: 8px; }
+
+  .controls button {
+    border: none;
+    border-radius: 999px;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--bg);
+  }
+
+  .btn-primary { background: var(--accent); }
+  .btn-secondary { background: var(--panel); color: var(--text); }
+  .btn-danger { background: var(--warn); }
+
+  .session-note {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-align: center;
+    min-height: 20px;
+    margin-top: 6px;
+    max-width: 320px;
+  }
+
+  /* ---- Stats view ---- */
+
+  .stats-scroll { width: 100%; overflow-y: auto; padding-bottom: 20px; }
+
+  .card {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+
+  .card h2 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+
+  .grid-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-tile { text-align: center; }
+  .stat-num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+  .journey-msg { font-size: 0.9rem; line-height: 1.5; color: var(--text); }
+  .journey-bar-track { height: 8px; background: var(--bg-2); border-radius: 999px; margin: 12px 0 6px; overflow: hidden; }
+  .journey-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.4s; }
+  .journey-range { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
+
+  .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 4px;
+    border-radius: 12px;
+    background: var(--bg-2);
+    opacity: 0.35;
+    text-align: center;
+  }
+  .badge.earned { opacity: 1; }
+  .badge .icon { font-size: 1.5rem; }
+  .badge .label { font-size: 0.65rem; color: var(--text-dim); line-height: 1.2; }
+
+  .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--bg-2);
+    padding-bottom: 6px;
+  }
+  .history-item span:first-child { color: var(--text); }
+  .empty-state { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 10px 0; }
+
+  .data-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .data-actions button {
+    flex: 1;
+    background: var(--bg-2);
+    color: var(--text-dim);
+    border: none;
+    border-radius: 10px;
+    padding: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .data-actions button.danger { color: var(--warn); }
+  input[type=file] { display: none; }
+
+  footer {
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    opacity: 0.5;
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  @media (min-width: 480px) {
+    .time-display { font-size: 3.4rem; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>sit</h1>
+    <nav class="tabs">
+      <button id="tabTimerBtn" class="active">Timer</button>
+      <button id="tabStatsBtn">Stats</button>
+    </nav>
+  </header>
+
+  <section id="timerView" class="view active">
+    <div class="mode-toggle">
+      <button id="modeUpBtn" class="active" data-mode="up">Count up</button>
+      <button id="modeDownBtn" data-mode="down">Count down</button>
+    </div>
+
+    <div id="presetRow" class="presets" hidden>
+      <button data-secs="120">2 min</button>
+      <button data-secs="300">5 min</button>
+      <button data-secs="600">10 min</button>
+    </div>
+
+    <div class="dial-wrap">
+      <svg viewBox="0 0 220 220">
+        <circle class="dial-track" cx="110" cy="110" r="98"></circle>
+        <circle id="dialProgress" class="dial-progress" cx="110" cy="110" r="98" stroke-dasharray="616" stroke-dashoffset="616"></circle>
+      </svg>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div id="timeDisplay" class="time-display">00:00</div>
+        <div id="timeSub" class="time-sub">ready when you are</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="startPauseBtn" class="btn-primary">Start</button>
+      <button id="stopBtn" class="btn-secondary" hidden>Finish</button>
+      <button id="resetBtn" class="btn-secondary" hidden>Reset</button>
+    </div>
+    <div id="sessionNote" class="session-note"></div>
+  </section>
+
+  <section id="statsView" class="view">
+    <div class="stats-scroll">
+
+      <div class="card">
+        <h2>Your habit journey</h2>
+        <div id="journeyMsg" class="journey-msg">Log your first sit to start tracking.</div>
+        <div class="journey-bar-track"><div id="journeyBarFill" class="journey-bar-fill" style="width:0%"></div></div>
+        <div class="journey-range"><span>Day 0</span><span>~66 days (avg.)</span><span>Day 254</span></div>
+      </div>
+
+      <div class="card">
+        <h2>At a glance</h2>
+        <div class="grid-stats">
+          <div class="stat-tile"><div id="statTotalSessions" class="stat-num">0</div><div class="stat-label">sessions logged</div></div>
+          <div class="stat-tile"><div id="statTotalTime" class="stat-num">0m</div><div class="stat-label">total time</div></div>
+          <div class="stat-tile"><div id="statStreak" class="stat-num">0</div><div class="stat-label">day streak</div></div>
+          <div class="stat-tile"><div id="statActiveDays" class="stat-num">0</div><div class="stat-label">active days / 30</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Milestones</h2>
+        <div id="badgeGrid" class="badge-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Recent sessions</h2>
+        <div id="historyList" class="history-list"><div class="empty-state">Nothing yet — your first sit will show up here.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Your data</h2>
+        <div class="session-note" style="margin-bottom:8px;">Stored only in this browser (localStorage) — nothing is sent anywhere. Export a backup if you want it to survive a browser reset or move to another device.</div>
+        <div class="data-actions">
+          <button id="exportBtn">Export backup</button>
+          <button id="importBtn">Import backup</button>
+          <button id="clearBtn" class="danger">Clear all data</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json">
+      </div>
+
+    </div>
+  </section>
+
+  <footer id="versionFooter">Sit · a tiny meditation timer</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "sit.sessions.v1";
+  var CIRC = 2 * Math.PI * 98;
+
+  // ---------- persistence ----------
+
+  function loadSessions() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+
+  function saveSessions(sessions) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+  }
+
+  function addSession(session) {
+    var sessions = loadSessions();
+    sessions.push(session);
+    saveSessions(sessions);
+  }
+
+  // ---------- timer state ----------
+
+  var mode = "up";            // "up" | "down"
+  var targetSecs = 0;         // for countdown
+  var running = false;
+  var startedAtMs = null;     // Date.now() when current run started
+  var accumulatedMs = 0;      // elapsed before the current run (paused time)
+  var startedAtIso = null;    // ISO timestamp of the very first Start press this session
+  var tickHandle = null;
+  var completedByTimeout = false;
+  var chimeCtx = null;
+
+  var timeDisplay = document.getElementById("timeDisplay");
+  var timeSub = document.getElementById("timeSub");
+  var dialProgress = document.getElementById("dialProgress");
+  var startPauseBtn = document.getElementById("startPauseBtn");
+  var stopBtn = document.getElementById("stopBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var sessionNote = document.getElementById("sessionNote");
+  var presetRow = document.getElementById("presetRow");
+
+  dialProgress.setAttribute("stroke-dasharray", CIRC.toFixed(1));
+
+  function fmt(totalSeconds) {
+    totalSeconds = Math.max(0, Math.round(totalSeconds));
+    var m = Math.floor(totalSeconds / 60);
+    var s = totalSeconds % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function elapsedMs() {
+    if (!running) return accumulatedMs;
+    return accumulatedMs + (Date.now() - startedAtMs);
+  }
+
+  function currentElapsedSeconds() { return elapsedMs() / 1000; }
+
+  function render() {
+    if (mode === "up") {
+      timeDisplay.textContent = fmt(currentElapsedSeconds());
+      var loopSecs = 600; // dial completes a lap every 10 min in count-up, purely decorative
+      var frac = (currentElapsedSeconds() % loopSecs) / loopSecs;
+      dialProgress.setAttribute("stroke-dashoffset", (CIRC * (1 - frac)).toFixed(1));
+      timeSub.textContent = running ? "elapsed" : (accumulatedMs > 0 ? "paused" : "ready when you are");
+    } else {
+      var remaining = Math.max(0, targetSecs - currentElapsedSeconds());
+      timeDisplay.textContent = fmt(remaining);
+      var frac2 = targetSecs > 0 ? (targetSecs - remaining) / targetSecs : 0;
+      dialProgress.setAttribute("stroke-dashoffset", (CIRC * (1 - frac2)).toFixed(1));
+      timeSub.textContent = running ? "remaining" : (accumulatedMs > 0 ? "paused" : "ready when you are");
+      if (remaining <= 0 && running) {
+        finishSession(true);
+        return;
+      }
+    }
+  }
+
+  function tick() { render(); }
+
+  function playChime() {
+    try {
+      if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = chimeCtx;
+      [523.25, 659.25, 783.99].forEach(function (freq, i) {
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        var startAt = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, startAt);
+        gain.gain.linearRampToValueAtTime(0.18, startAt + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startAt + 1.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(startAt);
+        osc.stop(startAt + 1.5);
+      });
+    } catch (e) {}
+    if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) {} }
+  }
+
+  function setModeUI() {
+    document.getElementById("modeUpBtn").classList.toggle("active", mode === "up");
+    document.getElementById("modeDownBtn").classList.toggle("active", mode === "down");
+    presetRow.hidden = mode !== "down";
+  }
+
+  function pickPreset(secs, btnEl) {
+    targetSecs = secs;
+    Array.prototype.forEach.call(presetRow.children, function (b) { b.classList.remove("active"); });
+    if (btnEl) btnEl.classList.add("active");
+    if (!running) render();
+  }
+
+  document.getElementById("modeUpBtn").addEventListener("click", function () { if (!running) { mode = "up"; setModeUI(); resetTimerState(); } });
+  document.getElementById("modeDownBtn").addEventListener("click", function () {
+    if (!running) {
+      mode = "down";
+      if (!targetSecs) targetSecs = 300;
+      setModeUI();
+      resetTimerState();
+    }
+  });
+
+  Array.prototype.forEach.call(presetRow.children, function (btn) {
+    btn.addEventListener("click", function () { if (!running) pickPreset(parseInt(btn.dataset.secs, 10), btn); });
+  });
+  pickPreset(300, presetRow.children[1]);
+
+  function resetTimerState() {
+    accumulatedMs = 0;
+    startedAtMs = null;
+    startedAtIso = null;
+    running = false;
+    completedByTimeout = false;
+    clearInterval(tickHandle);
+    startPauseBtn.textContent = "Start";
+    startPauseBtn.classList.remove("btn-danger");
+    startPauseBtn.hidden = false;
+    stopBtn.hidden = true;
+    resetBtn.hidden = true;
+    sessionNote.textContent = "";
+    render();
+  }
+
+  function startRun() {
+    if (!startedAtIso) startedAtIso = new Date().toISOString();
+    startedAtMs = Date.now();
+    running = true;
+    tickHandle = setInterval(tick, 250);
+    startPauseBtn.textContent = "Pause";
+    stopBtn.hidden = mode !== "up";
+    resetBtn.hidden = false;
+    sessionNote.textContent = mode === "up" ? "Sitting… press Finish when you're done." : "Sitting…";
+    render();
+  }
+
+  function pauseRun() {
+    accumulatedMs = elapsedMs();
+    running = false;
+    clearInterval(tickHandle);
+    startPauseBtn.textContent = "Resume";
+    sessionNote.textContent = "Paused.";
+  }
+
+  startPauseBtn.addEventListener("click", function () {
+    if (!running && startPauseBtn.textContent === "Start") startRun();
+    else if (!running) startRun();
+    else pauseRun();
+  });
+
+  stopBtn.addEventListener("click", function () { finishSession(false); });
+
+  resetBtn.addEventListener("click", function () {
+    var hadTime = elapsedMs() > 1000;
+    if (hadTime && !confirm("Discard this session without logging it?")) return;
+    resetTimerState();
+  });
+
+  function finishSession(byTimeout) {
+    var secs = mode === "down" ? Math.min(currentElapsedSeconds(), targetSecs) : currentElapsedSeconds();
+    running = false;
+    clearInterval(tickHandle);
+
+    if (secs < 10) {
+      sessionNote.textContent = "Too short to log — but no pressure, come back anytime.";
+      resetTimerState();
+      return;
+    }
+
+    addSession({
+      startedAt: startedAtIso,
+      completedAt: new Date().toISOString(),
+      durationSeconds: Math.round(secs),
+      mode: mode,
+      targetSeconds: mode === "down" ? targetSecs : null,
+      completedFull: mode === "down" ? byTimeout : true
+    });
+
+    playChime();
+    sessionNote.textContent = encouragingLine(secs);
+    startPauseBtn.hidden = true;
+    stopBtn.hidden = true;
+    resetBtn.hidden = true;
+    timeDisplay.textContent = mode === "down" ? "00:00" : fmt(secs);
+    dialProgress.setAttribute("stroke-dashoffset", "0");
+
+    setTimeout(function () {
+      resetTimerState();
+      refreshStats();
+    }, 2200);
+  }
+
+  function encouragingLine(secs) {
+    var mins = secs / 60;
+    if (mins < 3) return "Logged. Showing up is what counts — well done.";
+    if (mins < 7) return "Nice sit. Every session adds up.";
+    return "Great session — that's real practice.";
+  }
+
+  setModeUI();
+  resetTimerState();
+
+  // ---------- tabs ----------
+
+  var tabTimerBtn = document.getElementById("tabTimerBtn");
+  var tabStatsBtn = document.getElementById("tabStatsBtn");
+  var timerView = document.getElementById("timerView");
+  var statsView = document.getElementById("statsView");
+
+  tabTimerBtn.addEventListener("click", function () {
+    tabTimerBtn.classList.add("active"); tabStatsBtn.classList.remove("active");
+    timerView.classList.add("active"); statsView.classList.remove("active");
+  });
+  tabStatsBtn.addEventListener("click", function () {
+    tabStatsBtn.classList.add("active"); tabTimerBtn.classList.remove("active");
+    statsView.classList.add("active"); timerView.classList.remove("active");
+    refreshStats();
+  });
+
+  // ---------- stats / gamification ----------
+  // Based on Lally et al.: habits took 18-254 days to automate (avg ~66),
+  // and occasional missed days didn't meaningfully derail formation —
+  // so streaks here tolerate a single skipped day (grace) instead of
+  // resetting to zero, and messaging never shames a gap.
+
+  function dayKey(iso) {
+    var d = new Date(iso);
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+
+  function startOfDay(d) { var c = new Date(d); c.setHours(0, 0, 0, 0); return c; }
+
+  function computeStats(sessions) {
+    var totalSessions = sessions.length;
+    var totalSeconds = sessions.reduce(function (a, s) { return a + s.durationSeconds; }, 0);
+
+    var practiceDaySet = {};
+    sessions.forEach(function (s) { practiceDaySet[dayKey(s.completedAt)] = true; });
+    var practiceDays = Object.keys(practiceDaySet).sort();
+
+    // active days in the last 30 calendar days
+    var today = startOfDay(new Date());
+    var activeDays30 = 0;
+    for (var i = 0; i < 30; i++) {
+      var d = new Date(today); d.setDate(d.getDate() - i);
+      if (practiceDaySet[d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()]) activeDays30++;
+    }
+
+    // streak with a single-day grace: walk backwards from today; a lone
+    // missed day is skipped once without breaking the streak, two misses
+    // in a row ends it.
+    var streak = 0;
+    if (practiceDays.length) {
+      var cursor = new Date(today);
+      var graceUsed = false;
+      // if today has no session yet, start checking from yesterday but don't
+      // penalise "haven't sat yet today"
+      var cursorHasSession = practiceDaySet[cursor.getFullYear() + "-" + (cursor.getMonth() + 1) + "-" + cursor.getDate()];
+      if (!cursorHasSession) cursor.setDate(cursor.getDate() - 1);
+
+      while (true) {
+        var key = cursor.getFullYear() + "-" + (cursor.getMonth() + 1) + "-" + cursor.getDate();
+        if (practiceDaySet[key]) {
+          streak++;
+          cursor.setDate(cursor.getDate() - 1);
+        } else if (!graceUsed) {
+          graceUsed = true;
+          cursor.setDate(cursor.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    var firstDate = sessions.length ? new Date(sessions.slice().sort(function (a, b) { return new Date(a.completedAt) - new Date(b.completedAt); })[0].completedAt) : null;
+    var daysSinceStart = firstDate ? Math.floor((today - startOfDay(firstDate)) / 86400000) + 1 : 0;
+
+    var longest = sessions.reduce(function (a, s) { return Math.max(a, s.durationSeconds); }, 0);
+
+    return {
+      totalSessions: totalSessions,
+      totalSeconds: totalSeconds,
+      practiceDays: practiceDays,
+      activeDays30: activeDays30,
+      streak: streak,
+      daysSinceStart: daysSinceStart,
+      longestSeconds: longest
+    };
+  }
+
+  function fmtDuration(totalSeconds) {
+    if (totalSeconds < 60) return Math.round(totalSeconds) + "s";
+    var mins = Math.round(totalSeconds / 60);
+    if (mins < 60) return mins + "m";
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h + "h " + (m ? m + "m" : "");
+  }
+
+  function journeyMessage(stats) {
+    if (stats.totalSessions === 0) {
+      return "Log your first sit to start tracking. Research on habit formation (Lally et al.) found even a few minutes, done regularly, is what builds automaticity — not long sessions.";
+    }
+    var d = stats.daysSinceStart;
+    if (d < 18) {
+      return "Day " + d + " since your first sit. Studies suggest new habits take at least 18 days to start feeling automatic — you're still early, and that's exactly where everyone starts.";
+    }
+    if (d < 66) {
+      return "Day " + d + " since your first sit — past the earliest automaticity threshold (18 days) and heading toward the average (~66 days). Missed a day here and there? That's normal and doesn't undo the progress.";
+    }
+    if (d < 254) {
+      return "Day " + d + " since your first sit. You're beyond the average time it takes for a habit to become automatic — many people are fully there by now. Some take up to 254 days, so keep going at whatever pace fits.";
+    }
+    return "Day " + d + " since your first sit. Well past the full research range for automaticity (18-254 days) — this is very likely just part of your routine now.";
+  }
+
+  function refreshStats() {
+    var sessions = loadSessions();
+    var stats = computeStats(sessions);
+
+    document.getElementById("statTotalSessions").textContent = stats.totalSessions;
+    document.getElementById("statTotalTime").textContent = fmtDuration(stats.totalSeconds);
+    document.getElementById("statStreak").textContent = stats.streak;
+    document.getElementById("statActiveDays").textContent = stats.activeDays30;
+
+    document.getElementById("journeyMsg").textContent = journeyMessage(stats);
+    var pct = Math.max(0, Math.min(100, (stats.daysSinceStart / 254) * 100));
+    document.getElementById("journeyBarFill").style.width = pct + "%";
+
+    renderBadges(stats);
+    renderHistory(sessions);
+  }
+
+  var BADGES = [
+    { id: "first", icon: "🌱", label: "First sit", test: function (s) { return s.totalSessions >= 1; } },
+    { id: "five", icon: "🌿", label: "5 sessions", test: function (s) { return s.totalSessions >= 5; } },
+    { id: "twentyfive", icon: "🌳", label: "25 sessions", test: function (s) { return s.totalSessions >= 25; } },
+    { id: "week", icon: "🔥", label: "7 day streak", test: function (s) { return s.streak >= 7; } },
+    { id: "eighteen", icon: "⏳", label: "Day 18 — habit threshold", test: function (s) { return s.daysSinceStart >= 18; } },
+    { id: "avg", icon: "🌀", label: "Day 66 — average automaticity", test: function (s) { return s.daysSinceStart >= 66; } },
+    { id: "hour", icon: "🕐", label: "1 hour total", test: function (s) { return s.totalSeconds >= 3600; } },
+    { id: "active30", icon: "📅", label: "15+ active days in 30", test: function (s) { return s.activeDays30 >= 15; } },
+    { id: "full254", icon: "🏔️", label: "Day 254 — full range", test: function (s) { return s.daysSinceStart >= 254; } }
+  ];
+
+  function renderBadges(stats) {
+    var grid = document.getElementById("badgeGrid");
+    grid.innerHTML = "";
+    BADGES.forEach(function (b) {
+      var earned = b.test(stats);
+      var el = document.createElement("div");
+      el.className = "badge" + (earned ? " earned" : "");
+      el.innerHTML = '<div class="icon">' + b.icon + '</div><div class="label">' + b.label + '</div>';
+      grid.appendChild(el);
+    });
+  }
+
+  function renderHistory(sessions) {
+    var list = document.getElementById("historyList");
+    if (!sessions.length) { list.innerHTML = '<div class="empty-state">Nothing yet — your first sit will show up here.</div>'; return; }
+    var recent = sessions.slice().sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 25);
+    list.innerHTML = recent.map(function (s) {
+      var dt = new Date(s.completedAt);
+      var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      var modeLabel = s.mode === "down" ? "countdown" : "count-up";
+      return '<div class="history-item"><span>' + fmtDuration(s.durationSeconds) + ' · ' + modeLabel + '</span><span>' + dateStr + '</span></div>';
+    }).join("");
+  }
+
+  // ---------- backup / restore ----------
+
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    var data = { exportedAt: new Date().toISOString(), sessions: loadSessions() };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "sit-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  var importFile = document.getElementById("importFile");
+  document.getElementById("importBtn").addEventListener("click", function () { importFile.click(); });
+  importFile.addEventListener("change", function () {
+    var file = importFile.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        var incoming = Array.isArray(parsed) ? parsed : parsed.sessions;
+        if (!Array.isArray(incoming)) throw new Error("bad format");
+        var existing = loadSessions();
+        var seen = {};
+        existing.forEach(function (s) { seen[s.completedAt + s.durationSeconds] = true; });
+        incoming.forEach(function (s) {
+          var key = s.completedAt + s.durationSeconds;
+          if (!seen[key]) { existing.push(s); seen[key] = true; }
+        });
+        saveSessions(existing);
+        refreshStats();
+        alert("Backup imported.");
+      } catch (e) {
+        alert("Could not read that file as a Sit backup.");
+      }
+      importFile.value = "";
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    if (confirm("This permanently deletes all logged sessions in this browser. Continue?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      refreshStats();
+    }
+  });
+
+  refreshStats();
+
+  // keep tab title reflecting a running timer so it's visible when switching apps
+  setInterval(function () {
+    if (running) document.title = timeDisplay.textContent + " · Sit";
+    else document.title = "Sit";
+  }, 1000);
+
+})();
+</script>
+</body>
+</html>
