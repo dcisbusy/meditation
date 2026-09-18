@@ -33,6 +33,17 @@ Sheets backend for syncing across devices.
   below.
 - **Local backup**: export/import your session history as JSON regardless
   of whether sync is set up.
+- **Meditation styles (optional)**: in the Meditation category, eight
+  buttons — seven evidence-backed techniques (Focused Attention, Open
+  Monitoring, Body Scan, Noting, Loving-Kindness, Self-Compassion, RAIN)
+  plus Zen Koans — each open a popup with a short evidence summary and a
+  few prompts/koans, then **Select this style** or **Back**. Picking one
+  tags that session (and shows up in Stats → Practice styles); leaving it
+  unpicked logs the session with no style, exactly as before this existed.
+  Zen Koans is included with an explicit caveat in its popup: it's
+  traditionally a teacher-guided practice with no real controlled-study
+  evidence behind self-guided use, offered here for reflection only, not
+  as a validated technique like the other seven.
 
 ## Deploying
 
@@ -72,13 +83,18 @@ locally; delete it there too using the × on that entry in Recent sessions.
 ### Updating an already-deployed script
 
 If you set up sync before 2026-09-18, re-paste the current
-[`apps-script/Code.gs`](apps-script/Code.gs) (it fixes a bug where a blank
-`id` cell could make the same row reappear as a duplicate on every sync,
-and forces the timestamp columns to plain text so Sheets can't silently
-reformat them). Pasting new code alone doesn't update a live deployment —
-go to **Deploy → Manage deployments**, click the pencil/edit icon on your
-existing deployment, set **Version: New version**, then **Deploy**. The
-Web App URL stays the same, so nothing needs re-pasting in the app itself.
+[`apps-script/Code.gs`](apps-script/Code.gs) — it's picked up a couple of
+fixes since:
+- a bug where a blank `id` cell could make the same row reappear as a
+  duplicate on every sync, plus forcing the timestamp columns to plain
+  text so Sheets can't silently reformat them;
+- a `style` column (auto-added to existing sheets too) for the optional
+  meditation styles feature below.
+
+Pasting new code alone doesn't update a live deployment — go to **Deploy →
+Manage deployments**, click the pencil/edit icon on your existing
+deployment, set **Version: New version**, then **Deploy**. The Web App URL
+stays the same, so nothing needs re-pasting in the app itself.
 
 ## Privacy
 

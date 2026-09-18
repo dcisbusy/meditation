@@ -166,6 +166,89 @@
     color: var(--warn);
   }
 
+  .style-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 4px 0 12px;
+    max-width: 340px;
+  }
+
+  .style-row button {
+    background: var(--panel);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .style-row button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 15, 13, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+
+  .modal-box {
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+  }
+
+  .modal-box h2 {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    color: var(--text);
+  }
+
+  .modal-evidence {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  .modal-list {
+    margin: 0 0 16px;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .modal-list li {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text);
+  }
+
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions button {
+    flex: 1;
+    border: none;
+    border-radius: 999px;
+    padding: 11px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   .dial-wrap {
     position: relative;
     width: min(72vw, 300px);
@@ -209,7 +292,7 @@
     color: var(--bg);
   }
 
-  .btn-primary { background: var(--accent); }
+  .btn-primary { background: var(--accent); color: var(--bg); }
   .btn-secondary { background: var(--panel); color: var(--text); }
   .btn-danger { background: var(--warn); }
 
@@ -380,6 +463,17 @@
       <button data-cat="freewriting">✍️ Freewriting</button>
     </nav>
 
+    <nav class="style-row" id="styleRow" hidden>
+      <button data-style="focused-attention">Focused Attention</button>
+      <button data-style="open-monitoring">Open Monitoring</button>
+      <button data-style="body-scan">Body Scan</button>
+      <button data-style="noting">Noting</button>
+      <button data-style="loving-kindness">Loving-Kindness</button>
+      <button data-style="self-compassion">Self-Compassion</button>
+      <button data-style="rain">RAIN</button>
+      <button data-style="zen-koan">Zen Koans</button>
+    </nav>
+
     <div class="mode-toggle">
       <button id="modeUpBtn" class="active" data-mode="up">Count up</button>
       <button id="modeDownBtn" data-mode="down">Count down</button>
@@ -442,6 +536,11 @@
         <div id="badgeGrid" class="badge-grid"></div>
       </div>
 
+      <div class="card" id="styleBreakdownCard" hidden>
+        <h2>Practice styles</h2>
+        <div id="styleBreakdownList" class="history-list"></div>
+      </div>
+
       <div class="card">
         <h2>Recent sessions</h2>
         <div id="historyList" class="history-list"><div class="empty-state">Nothing yet — your first session will show up here.</div></div>
@@ -493,6 +592,18 @@
   <footer id="versionFooter">Sit · meditation, bodywork &amp; freewriting timer</footer>
 </div>
 
+<div id="styleModalOverlay" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h2 id="styleModalTitle">Style</h2>
+    <div id="styleModalEvidence" class="modal-evidence"></div>
+    <ul id="styleModalList" class="modal-list"></ul>
+    <div class="modal-actions">
+      <button id="styleModalBack" class="btn-secondary">Back</button>
+      <button id="styleModalSelect" class="btn-primary">Select this style</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -508,6 +619,95 @@
     bodywork: { label: "Bodywork", icon: "🤸", noun: "session", verb: "Moving" },
     freewriting: { label: "Freewriting", icon: "✍️", noun: "session", verb: "Writing" }
   };
+
+  // Optional meditation "styles" — a short evidence blurb plus a few
+  // prompts/koans, shown in a popup so picking one is informed, not just
+  // decorative. Picking one is entirely optional; if none is picked the
+  // session is logged with no style, same as before this feature existed.
+  var MEDITATION_STYLES = [
+    {
+      id: "focused-attention",
+      label: "Focused Attention",
+      evidence: "Sustained attention on one object — usually the breath — is the basis of most mindfulness research. Brief 5–10 minute sessions have been shown to reduce acute stress and heart rate (JAMA Internal Medicine meta-analysis, 2014).",
+      items: [
+        "Pick one spot where you feel the breath most clearly. Every time you notice you've left it, that noticing is the practice — just come back.",
+        "You don't need to control the breath. Just feel the next one, start to end.",
+        "When a thought pulls you away, that's not failure — it's the rep. Return, gently, as many times as it takes."
+      ]
+    },
+    {
+      id: "open-monitoring",
+      label: "Open Monitoring",
+      evidence: "Letting awareness rest open to whatever arises, without following it. An 8-week randomized trial found this performed comparably to full Mindfulness-Based Cognitive Therapy for depression and anxiety; EEG studies link this style to measurable gains in attention efficiency (Slagter et al., 2007).",
+      items: [
+        "Let sounds, feelings, thoughts come and go like weather. You're not chasing any of them — just noticing what's here.",
+        "Nothing here needs fixing or finishing. Just watch it move."
+      ]
+    },
+    {
+      id: "body-scan",
+      label: "Body Scan",
+      evidence: "The core practice of Mindfulness-Based Stress Reduction (Kabat-Zinn). One of the most-studied mindfulness techniques, with a large evidence base for stress, pain, and sleep.",
+      items: [
+        "Start at your feet. Just notice what's there — warmth, pressure, nothing much — no need to change it.",
+        "Move slowly upward, region by region. If you find tension, you don't have to release it — just seeing it is enough."
+      ]
+    },
+    {
+      id: "noting",
+      label: "Noting",
+      evidence: "Derived from Vipassana practice. Silently labeling what's arising (\"thinking\", \"sound\") helps catch a wandering mind faster and reduces over-identification with thoughts.",
+      items: [
+        "When something arises, give it one quiet word — 'thinking', 'sound', 'restless' — then let it go and come back.",
+        "You're not analyzing it. Just name it once, softly, and release."
+      ]
+    },
+    {
+      id: "loving-kindness",
+      label: "Loving-Kindness",
+      evidence: "Multiple randomized trials link this practice (metta) to reduced self-criticism and trauma-related shame (the C-METTA trial, 2024), and daily short sessions have improved wellbeing in controlled workplace studies.",
+      items: [
+        "Silently offer yourself: may I be safe, may I be at ease, may I be kind to myself today.",
+        "Bring someone to mind who's had a hard time lately. Offer them the same: may you be safe, may you be at ease."
+      ]
+    },
+    {
+      id: "self-compassion",
+      label: "Self-Compassion",
+      evidence: "Kristin Neff's three-part structure — mindfulness, common humanity, self-kindness — designed to take under a minute. Strong evidence links self-compassion to lower anxiety and depression.",
+      items: [
+        "Name it: 'this is hard right now.'",
+        "Remember: struggling like this is part of being human — you're not uniquely failing.",
+        "Ask: what would I say to a friend feeling this? Offer that to yourself."
+      ]
+    },
+    {
+      id: "rain",
+      label: "RAIN",
+      evidence: "Tara Brach's protocol for difficult emotions, built on the mindfulness and self-compassion evidence above.",
+      items: [
+        "Recognize what's here.",
+        "Allow it to be, without pushing it away.",
+        "Investigate — get curious about where you feel it in the body.",
+        "Nurture — offer yourself some warmth."
+      ]
+    },
+    {
+      id: "zen-koan",
+      label: "Zen Koans",
+      evidence: "Traditionally a koan is assigned by a teacher and tested in private interview (dokusan), where every conceptual answer is rejected until a non-conceptual insight opens up. General Zen sitting meditation has real evidence behind it, but no controlled studies isolate koan-solving itself, and Zen teachers themselves caution that a koan without a teacher risks becoming an intellectual puzzle rather than a real practice. These are offered here for open reflection only — not as a validated calming technique.",
+      items: [
+        "A monk asked Zhaozhou, \"Does a dog have Buddha-nature?\" Zhaozhou said, \"Mu.\"",
+        "What is the sound of one hand clapping?",
+        "What was your face before your parents were born?",
+        "If you meet the Buddha on the road, kill him.",
+        "Two monks argued about a flag flapping in the wind. One said, \"The flag is moving.\" The other said, \"No, the wind is moving.\" A third said, \"Not the flag, not the wind — mind is moving.\""
+      ]
+    }
+  ];
+
+  var STYLE_BY_ID = {};
+  MEDITATION_STYLES.forEach(function (s) { STYLE_BY_ID[s.id] = s; });
 
   // ---------- persistence ----------
 
@@ -622,6 +822,8 @@
   var presetRow = document.getElementById("presetRow");
   var timerCatRow = document.getElementById("timerCatRow");
   var statsCatRow = document.getElementById("statsCatRow");
+  var styleRow = document.getElementById("styleRow");
+  var selectedStyle = null;
 
   dialProgress.setAttribute("stroke-dasharray", CIRC.toFixed(1));
 
@@ -775,6 +977,8 @@
     settings.timerCategory = cat;
     saveSettings(settings);
     Array.prototype.forEach.call(timerCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === cat); });
+    styleRow.hidden = cat !== "meditation";
+    if (cat !== "meditation") clearSelectedStyle();
     render();
   }
 
@@ -797,6 +1001,53 @@
   // which needs BADGES (defined further down this script) to already exist.
   Array.prototype.forEach.call(timerCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === timerCategory); });
   Array.prototype.forEach.call(statsCatRow.children, function (b) { b.classList.toggle("active", b.dataset.cat === statsCategory); });
+  styleRow.hidden = timerCategory !== "meditation";
+
+  // ---------- meditation styles (optional evidence-backed prompts) ----------
+
+  var styleModalOverlay = document.getElementById("styleModalOverlay");
+  var styleModalTitle = document.getElementById("styleModalTitle");
+  var styleModalEvidence = document.getElementById("styleModalEvidence");
+  var styleModalList = document.getElementById("styleModalList");
+  var styleModalBack = document.getElementById("styleModalBack");
+  var styleModalSelect = document.getElementById("styleModalSelect");
+  var pendingStyleId = null;
+
+  function updateStyleButtonsUI() {
+    Array.prototype.forEach.call(styleRow.children, function (b) { b.classList.toggle("active", b.dataset.style === selectedStyle); });
+  }
+
+  function clearSelectedStyle() {
+    selectedStyle = null;
+    updateStyleButtonsUI();
+  }
+
+  function openStyleModal(styleId) {
+    var style = STYLE_BY_ID[styleId];
+    if (!style) return;
+    pendingStyleId = styleId;
+    styleModalTitle.textContent = style.label;
+    styleModalEvidence.textContent = style.evidence;
+    styleModalList.innerHTML = style.items.map(function (item) { return "<li>" + item + "</li>"; }).join("");
+    styleModalSelect.textContent = selectedStyle === styleId ? "Selected — keep it" : "Select this style";
+    styleModalOverlay.hidden = false;
+  }
+
+  function closeStyleModal() {
+    styleModalOverlay.hidden = true;
+    pendingStyleId = null;
+  }
+
+  Array.prototype.forEach.call(styleRow.children, function (btn) {
+    btn.addEventListener("click", function () { if (!running) openStyleModal(btn.dataset.style); });
+  });
+  styleModalBack.addEventListener("click", closeStyleModal);
+  styleModalSelect.addEventListener("click", function () {
+    selectedStyle = pendingStyleId;
+    updateStyleButtonsUI();
+    closeStyleModal();
+  });
+  styleModalOverlay.addEventListener("click", function (e) { if (e.target === styleModalOverlay) closeStyleModal(); });
 
   function resetTimerState() {
     accumulatedMs = 0;
@@ -845,6 +1096,7 @@
     var hadTime = elapsedMs() > 1000;
     if (hadTime && !confirm("Discard this session without logging it?")) return;
     resetTimerState();
+    clearSelectedStyle();
   });
 
   function finishSession(byTimeout) {
@@ -868,7 +1120,8 @@
       mode: mode,
       targetSeconds: mode === "down" ? targetSecs : null,
       completedFull: mode === "down" ? byTimeout : true,
-      category: timerCategory
+      category: timerCategory,
+      style: selectedStyle || null
     });
 
     if (mode === "down" && byTimeout) playGong(); else playChime();
@@ -885,6 +1138,7 @@
 
     setTimeout(function () {
       resetTimerState();
+      clearSelectedStyle();
       refreshStats();
     }, 2200);
   }
@@ -1034,6 +1288,22 @@
 
     renderBadges(stats, meta);
     renderHistory(sessions, meta);
+    renderStyleBreakdown(sessions);
+  }
+
+  function renderStyleBreakdown(sessions) {
+    var card = document.getElementById("styleBreakdownCard");
+    var counts = {};
+    sessions.forEach(function (s) {
+      if (s.style && STYLE_BY_ID[s.style]) counts[s.style] = (counts[s.style] || 0) + 1;
+    });
+    var ids = Object.keys(counts);
+    if (!ids.length) { card.hidden = true; return; }
+    ids.sort(function (a, b) { return counts[b] - counts[a]; });
+    card.hidden = false;
+    document.getElementById("styleBreakdownList").innerHTML = ids.map(function (id) {
+      return '<div class="history-item"><span>' + STYLE_BY_ID[id].label + '</span><span>' + counts[id] + (counts[id] === 1 ? " session" : " sessions") + '</span></div>';
+    }).join("");
   }
 
   var BADGES = [
@@ -1070,9 +1340,10 @@
       var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
       var modeLabel = s.mode === "down" ? "countdown" : "count-up";
       var catLabel = statsCategory === "all" ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
+      var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
       var row = document.createElement("div");
       row.className = "history-item";
-      row.innerHTML = '<span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel +
+      row.innerHTML = '<span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel + styleLabel +
         '</span><span class="history-right">' + dateStr +
         '<button class="history-delete" title="Delete this entry">×</button></span>';
       row.querySelector(".history-delete").addEventListener("click", function () {
@@ -1147,6 +1418,7 @@
       targetSeconds: row.targetSeconds === "" || row.targetSeconds == null ? null : Number(row.targetSeconds),
       completedFull: row.completedFull === true || row.completedFull === "TRUE" || row.completedFull === "true",
       category: row.category || "meditation",
+      style: row.style || null,
       synced: true
     };
     // A blank id column (rows written before the id column existed, or by

@@ -45,7 +45,8 @@ function doPost(e) {
     s.mode || '',
     s.durationSeconds || '',
     s.targetSeconds || '',
-    !!s.completedFull
+    !!s.completedFull,
+    s.style || ''
   ]);
   return json_({ ok: true });
 }
@@ -55,7 +56,12 @@ function getSheet_() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull']);
+    sheet.appendRow(['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style']);
+  } else {
+    // Backfill the "style" header for sheets created before this column
+    // existed, so old sheets pick it up without needing to be recreated.
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if (headers.indexOf('style') === -1) sheet.getRange(1, headers.length + 1).setValue('style');
   }
   // Sheets auto-detects ISO-looking strings and silently converts them to
   // Date cells, which can shift/round the value on every read and break
