@@ -305,6 +305,54 @@
     max-width: 320px;
   }
 
+  /* ---- Streak squares (Timer view) ---- */
+
+  .streak-card {
+    width: 100%;
+    max-width: 340px;
+    margin: 26px 0 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .streak-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+  }
+
+  .streak-body { display: flex; align-items: center; gap: 24px; }
+  .streak-count { text-align: center; min-width: 72px; }
+  .streak-num { font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .streak-label { font-size: 0.75rem; color: var(--text-dim); margin-top: 5px; }
+
+  .streak-grid { display: grid; grid-template-columns: repeat(7, 22px); gap: 4px; }
+  .streak-grid .wd { font-size: 0.6rem; text-align: center; color: var(--text-dim); }
+
+  .sq { width: 22px; height: 22px; border-radius: 5px; background: rgba(169, 196, 188, 0.10); }
+  .sq.done { background: #56c08a; }
+  .sq.grace { background: #e8a33d; }
+  .sq.missed { background: #c9605a; }
+  .sq.pending { background: transparent; border: 2px dashed rgba(169, 196, 188, 0.55); }
+  .sq.future { visibility: hidden; }
+  .sq.today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text-dim); }
+
+  .streak-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+  }
+  .streak-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .streak-legend i.done { background: #56c08a; }
+  .streak-legend i.grace { background: #e8a33d; }
+  .streak-legend i.missed { background: #c9605a; }
+
   /* ---- Stats view ---- */
 
   .stats-scroll { width: 100%; overflow-y: auto; padding-bottom: 20px; }
@@ -502,6 +550,22 @@
       <button id="resetBtn" class="btn-secondary" hidden>Reset</button>
     </div>
     <div id="sessionNote" class="session-note"></div>
+
+    <div class="streak-card">
+      <div class="streak-title" id="streakTitle"></div>
+      <div class="streak-body">
+        <div class="streak-count">
+          <div class="streak-num" id="streakNum">0</div>
+          <div class="streak-label">day streak</div>
+        </div>
+        <div class="streak-grid" id="streakGrid"></div>
+      </div>
+      <div class="streak-legend">
+        <span><i class="done"></i>done</span>
+        <span><i class="grace"></i>skipped, streak kept</span>
+        <span><i class="missed"></i>missed</span>
+      </div>
+    </div>
   </section>
 
   <section id="statsView" class="view">
@@ -863,11 +927,22 @@
 
   function tick() { render(); }
 
+  // Phones only let audio start after a user gesture, so this is also
+  // called from the Start tap — a context first created when a countdown
+  // ends on its own can be silently blocked.
+  function ensureAudio() {
+    if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (chimeCtx.state !== "running") {
+      var p = chimeCtx.resume();
+      if (p && p.catch) p.catch(function () {});
+    }
+    return chimeCtx;
+  }
+
   // A short bright chime for a session you actively ended yourself.
   function playChime() {
     try {
-      if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
-      var ctx = chimeCtx;
+      var ctx = ensureAudio();
       [523.25, 659.25, 783.99].forEach(function (freq, i) {
         var osc = ctx.createOscillator();
         var gain = ctx.createGain();
@@ -890,8 +965,7 @@
   // strike transient, so it needs no hosting and works offline.
   function playGong() {
     try {
-      if (!chimeCtx) chimeCtx = new (window.AudioContext || window.webkitAudioContext)();
-      var ctx = chimeCtx;
+      var ctx = ensureAudio();
       var now = ctx.currentTime;
 
       var master = ctx.createGain();
@@ -980,6 +1054,7 @@
     styleRow.hidden = cat !== "meditation";
     if (cat !== "meditation") clearSelectedStyle();
     render();
+    renderStreakStrip();
   }
 
   function setStatsCategory(cat) {
@@ -1049,7 +1124,30 @@
   });
   styleModalOverlay.addEventListener("click", function (e) { if (e.target === styleModalOverlay) closeStyleModal(); });
 
+  // Keep the screen awake while a countdown runs, so the phone doesn't
+  // time out and suspend the page before the gong. Best effort: it's
+  // released automatically whenever the page is hidden, and browsers
+  // without the Wake Lock API just skip it.
+  var wakeLock = null;
+
+  function acquireWakeLock() {
+    if (!navigator.wakeLock || wakeLock) return;
+    navigator.wakeLock.request("screen").then(function (lock) {
+      if (!(running && mode === "down")) { lock.release().catch(function () {}); return; }
+      wakeLock = lock;
+      lock.addEventListener("release", function () { if (wakeLock === lock) wakeLock = null; });
+    }).catch(function () {});
+  }
+
+  function releaseWakeLock() {
+    if (!wakeLock) return;
+    var lock = wakeLock;
+    wakeLock = null;
+    lock.release().catch(function () {});
+  }
+
   function resetTimerState() {
+    releaseWakeLock();
     accumulatedMs = 0;
     startedAtMs = null;
     startedAtIso = null;
@@ -1068,6 +1166,8 @@
     if (!startedAtIso) startedAtIso = new Date().toISOString();
     startedAtMs = Date.now();
     running = true;
+    try { ensureAudio(); } catch (e) {}
+    if (mode === "down") acquireWakeLock();
     tickHandle = setInterval(tick, 250);
     startPauseBtn.textContent = "Pause";
     stopBtn.hidden = mode !== "up";
@@ -1081,6 +1181,7 @@
     accumulatedMs = elapsedMs();
     running = false;
     clearInterval(tickHandle);
+    releaseWakeLock();
     startPauseBtn.textContent = "Resume";
     sessionNote.textContent = "Paused.";
   }
@@ -1101,8 +1202,12 @@
 
   function finishSession(byTimeout) {
     var secs = mode === "down" ? Math.min(currentElapsedSeconds(), targetSecs) : currentElapsedSeconds();
+    // A countdown that ran out while the phone was asleep is only noticed
+    // when the page wakes up; log it at the moment it actually ended.
+    var completedMs = (mode === "down" && byTimeout) ? startedAtMs + targetSecs * 1000 - accumulatedMs : Date.now();
     running = false;
     clearInterval(tickHandle);
+    releaseWakeLock();
 
     if (secs < 10) {
       sessionNote.textContent = "Too short to log — but no pressure, come back anytime.";
@@ -1115,7 +1220,7 @@
 
     var created = addSession({
       startedAt: startedAtIso,
-      completedAt: new Date().toISOString(),
+      completedAt: new Date(completedMs).toISOString(),
       durationSeconds: Math.round(secs),
       mode: mode,
       targetSeconds: mode === "down" ? targetSecs : null,
@@ -1189,6 +1294,81 @@
 
   function startOfDay(d) { var c = new Date(d); c.setHours(0, 0, 0, 0); return c; }
 
+  function dateKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+
+  // Step by calendar day (not by 24h) so daylight-saving changes can't
+  // skip or repeat a day.
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+  // Status of every day from the first session to today:
+  //   done    — at least one session that day
+  //   grace   — no session, but the day before was done and the day after
+  //             is done (or is today, still to play for): a one-day gap
+  //   missed  — any other gap
+  //   pending — today, nothing yet (the day isn't over, so it counts
+  //             neither for nor against you)
+  // Days before the first session get no entry (shown as blank), so a
+  // new habit doesn't open with a wall of red. The streak is the run of
+  // done + grace days ending today (or yesterday, if today is pending).
+  function computeDayStatuses(sessions) {
+    var doneSet = {};
+    var first = null;
+    sessions.forEach(function (s) {
+      var d = startOfDay(new Date(s.completedAt));
+      doneSet[dateKey(d)] = true;
+      if (!first || d < first) first = d;
+    });
+    var today = startOfDay(new Date());
+    var status = {};
+    if (!first || first > today) return { status: status, streak: 0 };
+
+    var days = [];
+    for (var d = first; d <= today; d = addDays(d, 1)) days.push(d);
+    var todayKey = dateKey(today);
+
+    days.forEach(function (day, i) {
+      var key = dateKey(day);
+      if (doneSet[key]) { status[key] = "done"; return; }
+      if (key === todayKey) { status[key] = "pending"; return; }
+      var prevDone = i > 0 && doneSet[dateKey(days[i - 1])];
+      var nextKey = dateKey(days[i + 1]);
+      var nextOk = doneSet[nextKey] || nextKey === todayKey;
+      status[key] = prevDone && nextOk ? "grace" : "missed";
+    });
+
+    var streak = 0;
+    for (var j = days.length - (status[todayKey] === "pending" ? 2 : 1); j >= 0; j--) {
+      var st = status[dateKey(days[j])];
+      if (st === "done" || st === "grace") streak++; else break;
+    }
+    return { status: status, streak: streak };
+  }
+
+  var STATUS_LABEL = { done: "done", grace: "skipped, streak kept", missed: "missed", pending: "today", none: "before you started" };
+
+  // Five Monday-first weeks ending with the current one, for whichever
+  // practice is selected on the Timer tab.
+  function renderStreakStrip() {
+    var cat = timerCategory;
+    var sessions = loadSessions().filter(function (s) { return sessionCategory(s) === cat; });
+    var info = computeDayStatuses(sessions);
+    var today = startOfDay(new Date());
+    var start = addDays(today, -(((today.getDay() + 6) % 7) + 28));
+
+    document.getElementById("streakTitle").textContent = CATEGORY_META[cat].label + " · last 5 weeks";
+    document.getElementById("streakNum").textContent = info.streak;
+
+    var html = ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return '<div class="wd">' + l + '</div>'; }).join("");
+    for (var i = 0; i < 35; i++) {
+      var d = addDays(start, i);
+      if (d > today) { html += '<div class="sq future"></div>'; continue; }
+      var st = info.status[dateKey(d)] || "none";
+      var label = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) + " — " + STATUS_LABEL[st];
+      html += '<div class="sq ' + st + (d.getTime() === today.getTime() ? " today" : "") + '" role="img" title="' + label + '" aria-label="' + label + '"></div>';
+    }
+    document.getElementById("streakGrid").innerHTML = html;
+  }
+
   function computeStats(sessions) {
     var totalSessions = sessions.length;
     var totalSeconds = sessions.reduce(function (a, s) { return a + s.durationSeconds; }, 0);
@@ -1205,29 +1385,7 @@
       if (practiceDaySet[d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()]) activeDays30++;
     }
 
-    // streak with a single-day grace: walk backwards from today; a lone
-    // missed day is skipped once without breaking the streak, two misses
-    // in a row ends it.
-    var streak = 0;
-    if (practiceDays.length) {
-      var cursor = new Date(today);
-      var graceUsed = false;
-      var cursorHasSession = practiceDaySet[cursor.getFullYear() + "-" + (cursor.getMonth() + 1) + "-" + cursor.getDate()];
-      if (!cursorHasSession) cursor.setDate(cursor.getDate() - 1);
-
-      while (true) {
-        var key = cursor.getFullYear() + "-" + (cursor.getMonth() + 1) + "-" + cursor.getDate();
-        if (practiceDaySet[key]) {
-          streak++;
-          cursor.setDate(cursor.getDate() - 1);
-        } else if (!graceUsed) {
-          graceUsed = true;
-          cursor.setDate(cursor.getDate() - 1);
-        } else {
-          break;
-        }
-      }
-    }
+    var streak = computeDayStatuses(sessions).streak;
 
     var firstDate = sessions.length ? new Date(sessions.slice().sort(function (a, b) { return new Date(a.completedAt) - new Date(b.completedAt); })[0].completedAt) : null;
     var daysSinceStart = firstDate ? Math.floor((today - startOfDay(firstDate)) / 86400000) + 1 : 0;
@@ -1289,6 +1447,7 @@
     renderBadges(stats, meta);
     renderHistory(sessions, meta);
     renderStyleBreakdown(sessions);
+    renderStreakStrip();
   }
 
   function renderStyleBreakdown(sessions) {
@@ -1499,6 +1658,20 @@
   })();
 
   refreshStats();
+
+  // Returning to the page (e.g. waking the phone): the screen lock is
+  // released whenever a page is hidden so re-take it, restart audio if the
+  // OS suspended it, catch the countdown up right away, and refresh the
+  // day grid in case midnight passed.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible") return;
+    if (chimeCtx && chimeCtx.state !== "running") {
+      try { var p = chimeCtx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }
+    if (running && mode === "down") acquireWakeLock();
+    if (running) render();
+    renderStreakStrip();
+  });
 
   // keep tab title reflecting a running timer so it's visible when switching apps
   setInterval(function () {

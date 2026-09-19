@@ -15,7 +15,12 @@ Sheets backend for syncing across devices.
 - **Count down**: 2 / 5 / 10 minute presets. Ends itself with a deep,
   synthesized gong (no audio file — generated from layered sine partials in
   the Web Audio API). A manually-ended session (Finish, or a count-up
-  session) plays a lighter chime instead.
+  session) plays a lighter chime instead. While a countdown runs the screen
+  is kept awake (Screen Wake Lock API, where supported) so the phone doesn't
+  time out and suspend the page before the gong. A web page can't ring while
+  the phone is locked with the power button or another app is in front; in
+  that case the countdown finishes and logs — stamped with the time it
+  really ended — as soon as you come back.
 - **Session log**: every completed session is timestamped and stored
   locally, tagged with its category.
 - **Gentle stats**, based on habit-formation research (Lally et al.):
@@ -23,8 +28,14 @@ Sheets backend for syncing across devices.
     around two months — so the "habit journey" progress bar frames things as
     a range, not a deadline.
   - Missing an occasional day didn't meaningfully derail habit formation in
-    that research, so the streak counter tolerates a single skipped day
-    instead of resetting to zero on the first miss.
+    that research, so a single skipped day doesn't break a streak.
+    Under each timer, a Monday-first grid of the last five weeks (for the
+    practice you're on) shows each day as **green** (done), **orange** (a
+    one-day gap between two done days — streak kept) or **red** (any longer
+    gap), with the current streak of green + orange days beside it. Days
+    before your first session stay blank rather than red, and today stays
+    neutral until it's over. The Stats tab's "day streak" uses the same
+    rule.
   - Badges reward showing up (first session, session counts, active days)
     rather than only long sessions — starting small is the point.
 - **Sync across devices (optional)**: back the app with a Google Sheet so
