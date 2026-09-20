@@ -17,6 +17,9 @@
     --accent: #7fb99a;
     --accent-soft: #3f6b5a;
     --warn: #d9a86c;
+    --done: #56c08a;
+    --grace: #e8a33d;
+    --missed: #c9605a;
     --radius: 18px;
   }
 
@@ -118,6 +121,15 @@
   }
 
   .category-tabs button.active { border-color: var(--accent); color: var(--accent); }
+
+  /* Practice buttons (Timer and Stats tabs): the colour today would be if
+     you did nothing more today. Never-logged practices keep the plain look. */
+  .category-tabs button.done { background: var(--done); color: var(--bg); }
+  .category-tabs button.grace { background: var(--grace); color: var(--bg); }
+  .category-tabs button.missed { background: var(--missed); color: var(--bg); }
+  .category-tabs button.done.active,
+  .category-tabs button.grace.active,
+  .category-tabs button.missed.active { border-color: var(--text); box-shadow: 0 0 0 1px var(--text); font-weight: 600; }
 
   /* ---- Timer view ---- */
 
@@ -333,9 +345,9 @@
   .streak-grid .wd { font-size: 0.6rem; text-align: center; color: var(--text-dim); }
 
   .sq { width: 22px; height: 22px; border-radius: 5px; background: rgba(169, 196, 188, 0.10); }
-  .sq.done { background: #56c08a; }
-  .sq.grace { background: #e8a33d; }
-  .sq.missed { background: #c9605a; }
+  .sq.done { background: var(--done); }
+  .sq.grace { background: var(--grace); }
+  .sq.missed { background: var(--missed); }
   .sq.pending { background: transparent; border: 2px dashed rgba(169, 196, 188, 0.55); }
   .sq.future { visibility: hidden; }
   .sq.today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text-dim); }
@@ -349,9 +361,9 @@
     color: var(--text-dim);
   }
   .streak-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
-  .streak-legend i.done { background: #56c08a; }
-  .streak-legend i.grace { background: #e8a33d; }
-  .streak-legend i.missed { background: #c9605a; }
+  .streak-legend i.done { background: var(--done); }
+  .streak-legend i.grace { background: var(--grace); }
+  .streak-legend i.missed { background: var(--missed); }
 
   /* ---- Stats view ---- */
 
@@ -1346,6 +1358,32 @@
 
   var STATUS_LABEL = { done: "done", grace: "skipped, streak kept", missed: "missed", pending: "today", none: "before you started" };
 
+  // Colour the practice buttons (Timer and Stats tabs) by what today would
+  // be if you did nothing more, assuming you do it tomorrow: green = done
+  // today, orange = not yet today but done yesterday, red = neither. A
+  // practice with no sessions at all is left uncoloured; "All" counts a
+  // session in any practice.
+  function renderCategoryTabColours() {
+    var sessions = loadSessions();
+    var today = startOfDay(new Date());
+    var todayKey = dateKey(today);
+    var yesterdayKey = dateKey(addDays(today, -1));
+    [timerCatRow, statsCatRow].forEach(function (row) {
+      Array.prototype.forEach.call(row.children, function (btn) {
+        var cat = btn.dataset.cat, seen = false, doneDays = {};
+        sessions.forEach(function (s) {
+          if (cat !== "all" && sessionCategory(s) !== cat) return;
+          seen = true;
+          doneDays[dateKey(new Date(s.completedAt))] = true;
+        });
+        var st = !seen ? "" : doneDays[todayKey] ? "done" : doneDays[yesterdayKey] ? "grace" : "missed";
+        btn.classList.remove("done", "grace", "missed");
+        if (st) btn.classList.add(st);
+        btn.title = st ? CATEGORY_META[cat].label + " — " + { done: "done today", grace: "not yet today, done yesterday", missed: "not done today or yesterday" }[st] : "";
+      });
+    });
+  }
+
   // Five Monday-first weeks ending with the current one, for whichever
   // practice is selected on the Timer tab.
   function renderStreakStrip() {
@@ -1448,6 +1486,7 @@
     renderHistory(sessions, meta);
     renderStyleBreakdown(sessions);
     renderStreakStrip();
+    renderCategoryTabColours();
   }
 
   function renderStyleBreakdown(sessions) {
@@ -1671,6 +1710,7 @@
     if (running && mode === "down") acquireWakeLock();
     if (running) render();
     renderStreakStrip();
+    renderCategoryTabColours();
   });
 
   // keep tab title reflecting a running timer so it's visible when switching apps

@@ -35,7 +35,11 @@ Sheets backend for syncing across devices.
     gap), with the current streak of green + orange days beside it. Days
     before your first session stay blank rather than red, and today stays
     neutral until it's over. The Stats tab's "day streak" uses the same
-    rule.
+    rule. The Meditation / Bodywork / Freewriting buttons (on both the
+    Timer and Stats tabs) are coloured to match: green if done today,
+    orange if not yet today but done yesterday, red if neither — assuming
+    you'll do it tomorrow — and left plain for a practice you've never
+    logged. On the Stats tab, "All" counts a session in any practice.
   - Badges reward showing up (first session, session counts, active days)
     rather than only long sessions — starting small is the point.
 - **Sync across devices (optional)**: back the app with a Google Sheet so
