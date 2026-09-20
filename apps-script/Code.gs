@@ -46,22 +46,36 @@ function doPost(e) {
     s.durationSeconds || '',
     s.targetSeconds || '',
     !!s.completedFull,
-    s.style || ''
+    s.style || '',
+    // Weights are logged by reps, not time: exercise + reps + kg. Note a
+    // weight of 0 (bodyweight) is real, so only null/undefined is left blank.
+    s.exercise || '',
+    s.reps == null ? '' : s.reps,
+    s.weightKg == null ? '' : s.weightKg
   ]);
   return json_({ ok: true });
 }
+
+// Column order matters: appendRow above writes positionally.
+var COLUMNS = ['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style', 'exercise', 'reps', 'weightKg'];
 
 function getSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style']);
+    sheet.appendRow(COLUMNS);
   } else {
-    // Backfill the "style" header for sheets created before this column
-    // existed, so old sheets pick it up without needing to be recreated.
+    // Backfill any header missing from a sheet created before that column
+    // existed (style, exercise, reps, weightKg), in order at the end, so old
+    // sheets pick them up without needing to be recreated.
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    if (headers.indexOf('style') === -1) sheet.getRange(1, headers.length + 1).setValue('style');
+    COLUMNS.forEach(function (name) {
+      if (headers.indexOf(name) === -1) {
+        sheet.getRange(1, headers.length + 1).setValue(name);
+        headers.push(name);
+      }
+    });
   }
   // Sheets auto-detects ISO-looking strings and silently converts them to
   // Date cells, which can shift/round the value on every read and break

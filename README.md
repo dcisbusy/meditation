@@ -7,9 +7,20 @@ Sheets backend for syncing across devices.
 
 ## Features
 
-- **Three practice categories** — Meditation, Bodywork, Freewriting — each
-  with their own stats page. Pick a category before you start; it's
+- **Three timed practice categories** — Meditation, Bodywork, Freewriting —
+  each with their own stats page. Pick a category before you start; it's
   remembered next time you open the app.
+- **Weights (logged by reps, not time)**: its own tab, with Kettlebells and
+  Squats. Enter the reps for the whole workout and the weight in kg, then
+  **Log workout**. The habit is "Weights", not the exercise — like a
+  meditation style, the exercise is just a detail on each entry, so one
+  streak covers both. Weight defaults to 8 kg for kettlebells and 0 kg
+  (bodyweight) for squats, then remembers your last reps and weight for each
+  exercise; that's read from the log itself, so it follows you across synced
+  devices. No targets. Weights aren't meant to be daily, so a streak
+  survives **up to two** skipped days between days you lifted (Meditation,
+  Bodywork and Freewriting still allow one); the Stats tab has a Weights view
+  with total reps, best workout and heaviest weight.
 - **Count up** (default): an open-ended stopwatch for a session with no
   fixed length.
 - **Count down**: 2 / 5 / 10 minute presets. Ends itself with a deep,
@@ -104,7 +115,11 @@ fixes since:
   duplicate on every sync, plus forcing the timestamp columns to plain
   text so Sheets can't silently reformat them;
 - a `style` column (auto-added to existing sheets too) for the optional
-  meditation styles feature below.
+  meditation styles feature below;
+- `exercise`, `reps` and `weightKg` columns (also auto-added) for the
+  Weights tab. Redeploy before you start logging workouts with sync on:
+  until then the Sheet, and any other device pulling from it, receives each
+  workout without its reps and kg.
 
 Pasting new code alone doesn't update a live deployment — go to **Deploy →
 Manage deployments**, click the pencil/edit icon on your existing

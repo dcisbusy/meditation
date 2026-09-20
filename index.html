@@ -365,6 +365,25 @@
   .streak-legend i.grace { background: var(--grace); }
   .streak-legend i.missed { background: var(--missed); }
 
+  /* ---- Weights view ---- */
+
+  .weights-form { width: 100%; max-width: 340px; margin-top: 14px; }
+  .weights-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .weights-fields .field { margin-bottom: 0; }
+  .weights-fields input { font-size: 1.1rem; padding: 11px 12px; }
+  .weights-log {
+    width: 100%;
+    margin-top: 14px;
+    border: none;
+    border-radius: 999px;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .weights-log:disabled { opacity: 0.55; cursor: default; }
+  .weights-recent { width: 100%; max-width: 340px; margin-top: 22px; }
+
   /* ---- Stats view ---- */
 
   .stats-scroll { width: 100%; overflow-y: auto; padding-bottom: 20px; }
@@ -512,6 +531,7 @@
     <h1>sit</h1>
     <nav class="tabs">
       <button id="tabTimerBtn" class="active">Timer</button>
+      <button id="tabWeightsBtn">Weights</button>
       <button id="tabStatsBtn">Stats</button>
     </nav>
   </header>
@@ -580,6 +600,50 @@
     </div>
   </section>
 
+  <section id="weightsView" class="view">
+    <nav class="category-tabs" id="exerciseRow">
+      <button data-exercise="kettlebells">Kettlebells</button>
+      <button data-exercise="squats">Squats</button>
+    </nav>
+
+    <form id="weightsForm" class="weights-form" novalidate>
+      <div class="weights-fields">
+        <div class="field">
+          <label for="repsInput">Reps (whole workout)</label>
+          <input id="repsInput" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 50" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="kgInput">Weight (kg)</label>
+          <input id="kgInput" type="number" inputmode="decimal" min="0" step="0.5" autocomplete="off">
+        </div>
+      </div>
+      <button type="submit" id="logWeightsBtn" class="btn-primary weights-log">Log workout</button>
+    </form>
+    <div id="weightsNote" class="session-note"></div>
+    <div id="weightsToday" class="session-note"></div>
+
+    <div class="streak-card">
+      <div class="streak-title" id="weightsStreakTitle"></div>
+      <div class="streak-body">
+        <div class="streak-count">
+          <div class="streak-num" id="weightsStreakNum">0</div>
+          <div class="streak-label">day streak</div>
+        </div>
+        <div class="streak-grid" id="weightsStreakGrid"></div>
+      </div>
+      <div class="streak-legend">
+        <span><i class="done"></i>done</span>
+        <span><i class="grace"></i>skipped 1–2 days, streak kept</span>
+        <span><i class="missed"></i>missed</span>
+      </div>
+    </div>
+
+    <div class="card weights-recent">
+      <h2>Recent workouts</h2>
+      <div id="weightsRecent" class="history-list"><div class="empty-state">Nothing yet — your first workout will show up here.</div></div>
+    </div>
+  </section>
+
   <section id="statsView" class="view">
     <div class="stats-scroll">
 
@@ -588,6 +652,7 @@
         <button data-cat="meditation">🧘 Meditation</button>
         <button data-cat="bodywork">🤸 Bodywork</button>
         <button data-cat="freewriting">✍️ Freewriting</button>
+        <button data-cat="weights">🏋️ Weights</button>
       </nav>
 
       <div class="card">
@@ -600,10 +665,12 @@
       <div class="card">
         <h2>At a glance</h2>
         <div class="grid-stats">
-          <div class="stat-tile"><div id="statTotalSessions" class="stat-num">0</div><div class="stat-label">sessions logged</div></div>
-          <div class="stat-tile"><div id="statTotalTime" class="stat-num">0m</div><div class="stat-label">total time</div></div>
+          <div class="stat-tile"><div id="statTotalSessions" class="stat-num">0</div><div id="statTotalSessionsLabel" class="stat-label">sessions logged</div></div>
+          <div class="stat-tile"><div id="statTotalTime" class="stat-num">0m</div><div id="statTotalTimeLabel" class="stat-label">total time</div></div>
           <div class="stat-tile"><div id="statStreak" class="stat-num">0</div><div class="stat-label">day streak</div></div>
           <div class="stat-tile"><div id="statActiveDays" class="stat-num">0</div><div class="stat-label">active days / 30</div></div>
+          <div class="stat-tile" id="statBestTile" hidden><div id="statBest" class="stat-num">0</div><div class="stat-label">best workout (reps)</div></div>
+          <div class="stat-tile" id="statHeaviestTile" hidden><div id="statHeaviest" class="stat-num">0</div><div class="stat-label">heaviest weight</div></div>
         </div>
       </div>
 
@@ -613,7 +680,7 @@
       </div>
 
       <div class="card" id="styleBreakdownCard" hidden>
-        <h2>Practice styles</h2>
+        <h2 id="styleBreakdownTitle">Practice styles</h2>
         <div id="styleBreakdownList" class="history-list"></div>
       </div>
 
@@ -693,8 +760,24 @@
     all: { label: "All", icon: "🌐", noun: "session", verb: "Practicing" },
     meditation: { label: "Meditation", icon: "🧘", noun: "sit", verb: "Sitting" },
     bodywork: { label: "Bodywork", icon: "🤸", noun: "session", verb: "Moving" },
-    freewriting: { label: "Freewriting", icon: "✍️", noun: "session", verb: "Writing" }
+    freewriting: { label: "Freewriting", icon: "✍️", noun: "session", verb: "Writing" },
+    weights: { label: "Weights", icon: "🏋️", noun: "workout", verb: "Lifting", reps: true }
   };
+
+  // Practices you time on the Timer tab; Weights is logged by reps instead.
+  var TIMED_CATEGORIES = ["meditation", "bodywork", "freewriting"];
+
+  // The habit is "Weights"; the exercise is just a detail on each entry,
+  // the way a meditation style is.
+  var EXERCISES = {
+    kettlebells: { label: "Kettlebells", defaultKg: 8 },
+    squats: { label: "Squats", defaultKg: 0 }
+  };
+
+  // How many consecutive missed days can sit between two done days without
+  // breaking a streak. Weights aren't meant to be daily, so they get two.
+  var GRACE_DAYS = { weights: 2 };
+  function graceFor(cat) { return GRACE_DAYS[cat] || 1; }
 
   // Optional meditation "styles" — a short evidence blurb plus a few
   // prompts/koans, shown in a popup so picking one is informed, not just
@@ -827,7 +910,8 @@
   // doesn't carry its own id, so re-pulling the same unchanged row never
   // creates a new duplicate.
   function contentKey(s) {
-    return (s.completedAt || "") + "|" + (s.durationSeconds || "") + "|" + sessionCategory(s);
+    return (s.completedAt || "") + "|" + (s.durationSeconds || "") + "|" + sessionCategory(s) +
+      (s.reps != null ? "|" + s.reps : "");
   }
 
   function keyFor(s) { return s.id || contentKey(s); }
@@ -885,7 +969,7 @@
   var chimeCtx = null;
 
   var settings = loadSettings();
-  var timerCategory = CATEGORY_META[settings.timerCategory] && settings.timerCategory !== "all" ? settings.timerCategory : "meditation";
+  var timerCategory = TIMED_CATEGORIES.indexOf(settings.timerCategory) !== -1 ? settings.timerCategory : "meditation";
   var statsCategory = CATEGORY_META[settings.statsCategory] ? settings.statsCategory : "all";
 
   var timeDisplay = document.getElementById("timeDisplay");
@@ -1272,25 +1356,30 @@
 
   // ---------- tabs ----------
 
-  var tabTimerBtn = document.getElementById("tabTimerBtn");
-  var tabStatsBtn = document.getElementById("tabStatsBtn");
-  var timerView = document.getElementById("timerView");
-  var statsView = document.getElementById("statsView");
+  var TABS = {
+    timer: [document.getElementById("tabTimerBtn"), document.getElementById("timerView")],
+    weights: [document.getElementById("tabWeightsBtn"), document.getElementById("weightsView")],
+    stats: [document.getElementById("tabStatsBtn"), document.getElementById("statsView")]
+  };
   var lastAutoPull = 0;
 
-  tabTimerBtn.addEventListener("click", function () {
-    tabTimerBtn.classList.add("active"); tabStatsBtn.classList.remove("active");
-    timerView.classList.add("active"); statsView.classList.remove("active");
-  });
-  tabStatsBtn.addEventListener("click", function () {
-    tabStatsBtn.classList.add("active"); tabTimerBtn.classList.remove("active");
-    statsView.classList.add("active"); timerView.classList.remove("active");
+  function showTab(name) {
+    Object.keys(TABS).forEach(function (k) {
+      TABS[k][0].classList.toggle("active", k === name);
+      TABS[k][1].classList.toggle("active", k === name);
+    });
+    if (name === "timer") return;
+    if (name === "weights") prefillWeightsForm(false);
     refreshStats();
     var cfg = loadSyncConfig();
     if (cfg && cfg.url && Date.now() - lastAutoPull > 15000) {
       lastAutoPull = Date.now();
       pullRemote(cfg, true);
     }
+  }
+
+  Object.keys(TABS).forEach(function (k) {
+    TABS[k][0].addEventListener("click", function () { showTab(k); });
   });
 
   // ---------- stats / gamification ----------
@@ -1314,15 +1403,17 @@
 
   // Status of every day from the first session to today:
   //   done    — at least one session that day
-  //   grace   — no session, but the day before was done and the day after
-  //             is done (or is today, still to play for): a one-day gap
-  //   missed  — any other gap
+  //   grace   — no session, but it sits in a run of at most `graceDays`
+  //             missed days between two done days (or ending yesterday,
+  //             with today still to play for)
+  //   missed  — any longer gap
   //   pending — today, nothing yet (the day isn't over, so it counts
   //             neither for nor against you)
   // Days before the first session get no entry (shown as blank), so a
   // new habit doesn't open with a wall of red. The streak is the run of
   // done + grace days ending today (or yesterday, if today is pending).
-  function computeDayStatuses(sessions) {
+  function computeDayStatuses(sessions, graceDays) {
+    graceDays = graceDays || 1;
     var doneSet = {};
     var first = null;
     sessions.forEach(function (s) {
@@ -1338,15 +1429,19 @@
     for (var d = first; d <= today; d = addDays(d, 1)) days.push(d);
     var todayKey = dateKey(today);
 
-    days.forEach(function (day, i) {
-      var key = dateKey(day);
-      if (doneSet[key]) { status[key] = "done"; return; }
-      if (key === todayKey) { status[key] = "pending"; return; }
-      var prevDone = i > 0 && doneSet[dateKey(days[i - 1])];
-      var nextKey = dateKey(days[i + 1]);
-      var nextOk = doneSet[nextKey] || nextKey === todayKey;
-      status[key] = prevDone && nextOk ? "grace" : "missed";
-    });
+    var i = 0;
+    while (i < days.length) {
+      var key = dateKey(days[i]);
+      if (doneSet[key]) { status[key] = "done"; i++; continue; }
+      if (key === todayKey) { status[key] = "pending"; i++; continue; }
+      // A run of missed days, up to the next done day or today. The first
+      // day is always done, so every run has a done day before it.
+      var j = i;
+      while (j + 1 < days.length && !doneSet[dateKey(days[j + 1])] && dateKey(days[j + 1]) !== todayKey) j++;
+      var runStatus = j - i + 1 <= graceDays ? "grace" : "missed";
+      for (var k = i; k <= j; k++) status[dateKey(days[k])] = runStatus;
+      i = j + 1;
+    }
 
     var streak = 0;
     for (var j = days.length - (status[todayKey] === "pending" ? 2 : 1); j >= 0; j--) {
@@ -1360,14 +1455,13 @@
 
   // Colour the practice buttons (Timer and Stats tabs) by what today would
   // be if you did nothing more, assuming you do it tomorrow: green = done
-  // today, orange = not yet today but done yesterday, red = neither. A
-  // practice with no sessions at all is left uncoloured; "All" counts a
-  // session in any practice.
+  // today, orange = not yet today but done within the allowed gap (1 day,
+  // or 2 for Weights), red = neither. A practice with no sessions at all
+  // is left uncoloured; "All" counts a session in any practice.
   function renderCategoryTabColours() {
     var sessions = loadSessions();
     var today = startOfDay(new Date());
     var todayKey = dateKey(today);
-    var yesterdayKey = dateKey(addDays(today, -1));
     [timerCatRow, statsCatRow].forEach(function (row) {
       Array.prototype.forEach.call(row.children, function (btn) {
         var cat = btn.dataset.cat, seen = false, doneDays = {};
@@ -1376,25 +1470,39 @@
           seen = true;
           doneDays[dateKey(new Date(s.completedAt))] = true;
         });
-        var st = !seen ? "" : doneDays[todayKey] ? "done" : doneDays[yesterdayKey] ? "grace" : "missed";
+        var g = graceFor(cat), daysAgo = 0;
+        for (var n = 1; n <= g && !daysAgo; n++) if (doneDays[dateKey(addDays(today, -n))]) daysAgo = n;
+        var st = !seen ? "" : doneDays[todayKey] ? "done" : daysAgo ? "grace" : "missed";
         btn.classList.remove("done", "grace", "missed");
         if (st) btn.classList.add(st);
-        btn.title = st ? CATEGORY_META[cat].label + " — " + { done: "done today", grace: "not yet today, done yesterday", missed: "not done today or yesterday" }[st] : "";
+        var recent = g === 1 ? "yesterday" : "the last " + g + " days";
+        btn.title = !st ? "" : CATEGORY_META[cat].label + " — " + {
+          done: "done today",
+          grace: "not yet today, last done " + (daysAgo === 1 ? "yesterday" : daysAgo + " days ago"),
+          missed: "not done today or in " + recent
+        }[st];
       });
     });
   }
 
-  // Five Monday-first weeks ending with the current one, for whichever
-  // practice is selected on the Timer tab.
+  // Five Monday-first weeks ending with the current one: for the practice
+  // selected on the Timer tab, and for Weights on the Weights tab.
+  var TIMER_STREAK_IDS = { title: "streakTitle", num: "streakNum", grid: "streakGrid" };
+  var WEIGHTS_STREAK_IDS = { title: "weightsStreakTitle", num: "weightsStreakNum", grid: "weightsStreakGrid" };
+
   function renderStreakStrip() {
-    var cat = timerCategory;
+    renderStreakCard(timerCategory, TIMER_STREAK_IDS);
+    renderStreakCard("weights", WEIGHTS_STREAK_IDS);
+  }
+
+  function renderStreakCard(cat, ids) {
     var sessions = loadSessions().filter(function (s) { return sessionCategory(s) === cat; });
-    var info = computeDayStatuses(sessions);
+    var info = computeDayStatuses(sessions, graceFor(cat));
     var today = startOfDay(new Date());
     var start = addDays(today, -(((today.getDay() + 6) % 7) + 28));
 
-    document.getElementById("streakTitle").textContent = CATEGORY_META[cat].label + " · last 5 weeks";
-    document.getElementById("streakNum").textContent = info.streak;
+    document.getElementById(ids.title).textContent = CATEGORY_META[cat].label + " · last 5 weeks";
+    document.getElementById(ids.num).textContent = info.streak;
 
     var html = ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return '<div class="wd">' + l + '</div>'; }).join("");
     for (var i = 0; i < 35; i++) {
@@ -1404,12 +1512,15 @@
       var label = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) + " — " + STATUS_LABEL[st];
       html += '<div class="sq ' + st + (d.getTime() === today.getTime() ? " today" : "") + '" role="img" title="' + label + '" aria-label="' + label + '"></div>';
     }
-    document.getElementById("streakGrid").innerHTML = html;
+    document.getElementById(ids.grid).innerHTML = html;
   }
 
-  function computeStats(sessions) {
+  function computeStats(sessions, graceDays) {
     var totalSessions = sessions.length;
-    var totalSeconds = sessions.reduce(function (a, s) { return a + s.durationSeconds; }, 0);
+    var totalSeconds = sessions.reduce(function (a, s) { return a + (s.durationSeconds || 0); }, 0);
+    var totalReps = sessions.reduce(function (a, s) { return a + (s.reps || 0); }, 0);
+    var bestReps = sessions.reduce(function (a, s) { return Math.max(a, s.reps || 0); }, 0);
+    var heaviestKg = sessions.reduce(function (a, s) { return s.reps ? Math.max(a, s.weightKg || 0) : a; }, 0);
 
     var practiceDaySet = {};
     sessions.forEach(function (s) { practiceDaySet[dayKey(s.completedAt)] = true; });
@@ -1423,16 +1534,19 @@
       if (practiceDaySet[d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()]) activeDays30++;
     }
 
-    var streak = computeDayStatuses(sessions).streak;
+    var streak = computeDayStatuses(sessions, graceDays).streak;
 
     var firstDate = sessions.length ? new Date(sessions.slice().sort(function (a, b) { return new Date(a.completedAt) - new Date(b.completedAt); })[0].completedAt) : null;
     var daysSinceStart = firstDate ? Math.floor((today - startOfDay(firstDate)) / 86400000) + 1 : 0;
 
-    var longest = sessions.reduce(function (a, s) { return Math.max(a, s.durationSeconds); }, 0);
+    var longest = sessions.reduce(function (a, s) { return Math.max(a, s.durationSeconds || 0); }, 0);
 
     return {
       totalSessions: totalSessions,
       totalSeconds: totalSeconds,
+      totalReps: totalReps,
+      bestReps: bestReps,
+      heaviestKg: heaviestKg,
       practiceDays: practiceDays,
       activeDays30: activeDays30,
       streak: streak,
@@ -1470,11 +1584,20 @@
   function refreshStats() {
     var allSessions = loadSessions();
     var sessions = statsCategory === "all" ? allSessions : allSessions.filter(function (s) { return sessionCategory(s) === statsCategory; });
-    var stats = computeStats(sessions);
+    var stats = computeStats(sessions, graceFor(statsCategory));
     var meta = CATEGORY_META[statsCategory];
+    var isWeights = !!meta.reps;
 
     document.getElementById("statTotalSessions").textContent = stats.totalSessions;
-    document.getElementById("statTotalTime").textContent = fmtDuration(stats.totalSeconds);
+    document.getElementById("statTotalSessionsLabel").textContent = isWeights ? "workouts logged" : "sessions logged";
+    document.getElementById("statTotalTime").textContent = isWeights ? stats.totalReps.toLocaleString() : fmtDuration(stats.totalSeconds);
+    document.getElementById("statTotalTimeLabel").textContent = isWeights ? "total reps" : "total time";
+    document.getElementById("statBestTile").hidden = !isWeights;
+    document.getElementById("statHeaviestTile").hidden = !isWeights;
+    if (isWeights) {
+      document.getElementById("statBest").textContent = stats.bestReps.toLocaleString();
+      document.getElementById("statHeaviest").textContent = kgText(stats.heaviestKg);
+    }
     document.getElementById("statStreak").textContent = stats.streak;
     document.getElementById("statActiveDays").textContent = stats.activeDays30;
 
@@ -1484,34 +1607,59 @@
 
     renderBadges(stats, meta);
     renderHistory(sessions, meta);
-    renderStyleBreakdown(sessions);
+    renderStyleBreakdown(sessions, meta);
     renderStreakStrip();
     renderCategoryTabColours();
+    renderWeightsView();
   }
 
-  function renderStyleBreakdown(sessions) {
+  function kgText(kg) {
+    if (kg == null) return "";
+    return kg === 0 ? "bodyweight" : +Number(kg).toFixed(2) + " kg";
+  }
+
+  // Meditation views list how often each style was used; the Weights view
+  // lists each exercise with its workouts and reps.
+  function renderStyleBreakdown(sessions, meta) {
     var card = document.getElementById("styleBreakdownCard");
-    var counts = {};
-    sessions.forEach(function (s) {
-      if (s.style && STYLE_BY_ID[s.style]) counts[s.style] = (counts[s.style] || 0) + 1;
-    });
-    var ids = Object.keys(counts);
-    if (!ids.length) { card.hidden = true; return; }
-    ids.sort(function (a, b) { return counts[b] - counts[a]; });
+    var rows = [];
+    if (meta.reps) {
+      var byExercise = {};
+      sessions.forEach(function (s) {
+        if (!EXERCISES[s.exercise]) return;
+        var e = byExercise[s.exercise] || (byExercise[s.exercise] = { n: 0, reps: 0 });
+        e.n++;
+        e.reps += s.reps || 0;
+      });
+      Object.keys(byExercise).sort(function (a, b) { return byExercise[b].n - byExercise[a].n; }).forEach(function (id) {
+        var e = byExercise[id];
+        rows.push([EXERCISES[id].label, e.n + (e.n === 1 ? " workout" : " workouts") + " · " + e.reps.toLocaleString() + " reps"]);
+      });
+    } else {
+      var counts = {};
+      sessions.forEach(function (s) {
+        if (s.style && STYLE_BY_ID[s.style]) counts[s.style] = (counts[s.style] || 0) + 1;
+      });
+      Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).forEach(function (id) {
+        rows.push([STYLE_BY_ID[id].label, counts[id] + (counts[id] === 1 ? " session" : " sessions")]);
+      });
+    }
+    if (!rows.length) { card.hidden = true; return; }
     card.hidden = false;
-    document.getElementById("styleBreakdownList").innerHTML = ids.map(function (id) {
-      return '<div class="history-item"><span>' + STYLE_BY_ID[id].label + '</span><span>' + counts[id] + (counts[id] === 1 ? " session" : " sessions") + '</span></div>';
+    document.getElementById("styleBreakdownTitle").textContent = meta.reps ? "Exercises" : "Practice styles";
+    document.getElementById("styleBreakdownList").innerHTML = rows.map(function (r) {
+      return '<div class="history-item"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
     }).join("");
   }
 
   var BADGES = [
     { id: "first", icon: "🌱", label: function (m) { return "First " + m.noun; }, test: function (s) { return s.totalSessions >= 1; } },
-    { id: "five", icon: "🌿", label: function () { return "5 sessions"; }, test: function (s) { return s.totalSessions >= 5; } },
-    { id: "twentyfive", icon: "🌳", label: function () { return "25 sessions"; }, test: function (s) { return s.totalSessions >= 25; } },
+    { id: "five", icon: "🌿", label: function (m) { return m.reps ? "5 workouts" : "5 sessions"; }, test: function (s) { return s.totalSessions >= 5; } },
+    { id: "twentyfive", icon: "🌳", label: function (m) { return m.reps ? "25 workouts" : "25 sessions"; }, test: function (s) { return s.totalSessions >= 25; } },
     { id: "week", icon: "🔥", label: function () { return "7 day streak"; }, test: function (s) { return s.streak >= 7; } },
     { id: "eighteen", icon: "⏳", label: function () { return "Day 18 — habit threshold"; }, test: function (s) { return s.daysSinceStart >= 18; } },
     { id: "avg", icon: "🌀", label: function () { return "Day 66 — average automaticity"; }, test: function (s) { return s.daysSinceStart >= 66; } },
-    { id: "hour", icon: "🕐", label: function () { return "1 hour total"; }, test: function (s) { return s.totalSeconds >= 3600; } },
+    { id: "hour", icon: "🕐", repsIcon: "💪", label: function (m) { return m.reps ? "1,000 total reps" : "1 hour total"; }, test: function (s, m) { return m.reps ? s.totalReps >= 1000 : s.totalSeconds >= 3600; } },
     { id: "active30", icon: "📅", label: function () { return "15+ active days in 30"; }, test: function (s) { return s.activeDays30 >= 15; } },
     { id: "full254", icon: "🏔️", label: function () { return "Day 254 — full range"; }, test: function (s) { return s.daysSinceStart >= 254; } }
   ];
@@ -1520,10 +1668,10 @@
     var grid = document.getElementById("badgeGrid");
     grid.innerHTML = "";
     BADGES.forEach(function (b) {
-      var earned = b.test(stats);
+      var earned = b.test(stats, meta);
       var el = document.createElement("div");
       el.className = "badge" + (earned ? " earned" : "");
-      el.innerHTML = '<div class="icon">' + b.icon + '</div><div class="label">' + b.label(meta) + '</div>';
+      el.innerHTML = '<div class="icon">' + ((meta.reps && b.repsIcon) || b.icon) + '</div><div class="label">' + b.label(meta) + '</div>';
       grid.appendChild(el);
     });
   }
@@ -1533,24 +1681,35 @@
     if (!sessions.length) { list.innerHTML = '<div class="empty-state">Nothing yet — your first ' + meta.noun + ' will show up here.</div>'; return; }
     var recent = sessions.slice().sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 25);
     list.innerHTML = "";
-    recent.forEach(function (s) {
-      var dt = new Date(s.completedAt);
-      var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-      var modeLabel = s.mode === "down" ? "countdown" : "count-up";
-      var catLabel = statsCategory === "all" ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
-      var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
-      var row = document.createElement("div");
-      row.className = "history-item";
-      row.innerHTML = '<span>' + fmtDuration(s.durationSeconds) + " · " + modeLabel + catLabel + styleLabel +
-        '</span><span class="history-right">' + dateStr +
-        '<button class="history-delete" title="Delete this entry">×</button></span>';
-      row.querySelector(".history-delete").addEventListener("click", function () {
-        if (!confirm("Delete this logged session? If it's also on a synced Sheet, delete it there separately — sync here only ever adds, it doesn't remove.")) return;
-        saveSessions(loadSessions().filter(function (x) { return x.id !== s.id; }));
-        refreshStats();
-      });
-      list.appendChild(row);
+    recent.forEach(function (s) { list.appendChild(buildHistoryRow(s, statsCategory === "all")); });
+  }
+
+  function entrySummary(s, showCategory) {
+    var catLabel = showCategory ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
+    if (sessionCategory(s) === "weights") {
+      var ex = EXERCISES[s.exercise] ? EXERCISES[s.exercise].label : "Weights";
+      var kg = kgText(s.weightKg);
+      return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel;
+    }
+    var modeLabel = s.mode === "down" ? "countdown" : "count-up";
+    var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
+    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel;
+  }
+
+  function buildHistoryRow(s, showCategory) {
+    var dt = new Date(s.completedAt);
+    var dateStr = dt.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + dt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    var row = document.createElement("div");
+    row.className = "history-item";
+    row.innerHTML = '<span>' + entrySummary(s, showCategory) +
+      '</span><span class="history-right">' + dateStr +
+      '<button class="history-delete" title="Delete this entry">×</button></span>';
+    row.querySelector(".history-delete").addEventListener("click", function () {
+      if (!confirm("Delete this logged session? If it's also on a synced Sheet, delete it there separately — sync here only ever adds, it doesn't remove.")) return;
+      saveSessions(loadSessions().filter(function (x) { return x.id !== s.id; }));
+      refreshStats();
     });
+    return row;
   }
 
   // ---------- backup / restore ----------
@@ -1599,6 +1758,124 @@
     }
   });
 
+  // ---------- weights (logged by reps, not timed) ----------
+
+  var exerciseRow = document.getElementById("exerciseRow");
+  var repsInput = document.getElementById("repsInput");
+  var kgInput = document.getElementById("kgInput");
+  var logWeightsBtn = document.getElementById("logWeightsBtn");
+  var weightsNote = document.getElementById("weightsNote");
+  var weightsToday = document.getElementById("weightsToday");
+  var weightsRecent = document.getElementById("weightsRecent");
+  var weightsDirty = false;   // true once you've typed in the form
+
+  function weightsSessions() {
+    return loadSessions().filter(function (s) { return sessionCategory(s) === "weights"; });
+  }
+
+  // Most recent weights entry, optionally for one exercise. Reading it from
+  // the log (rather than a per-device setting) means your last values
+  // follow you to every device that syncs.
+  function lastEntry(exercise) {
+    var best = null;
+    weightsSessions().forEach(function (s) {
+      if (exercise && s.exercise !== exercise) return;
+      if (!best || new Date(s.completedAt) > new Date(best.completedAt)) best = s;
+    });
+    return best;
+  }
+
+  var lastUsed = lastEntry(null);
+  var weightsExercise = lastUsed && EXERCISES[lastUsed.exercise] ? lastUsed.exercise : "kettlebells";
+
+  // Fill the form from your last entry for the selected exercise, or the
+  // defaults (8 kg kettlebells, bodyweight squats) if there isn't one. Skipped
+  // while you're mid-typing unless forced.
+  function prefillWeightsForm(force) {
+    if (weightsDirty && !force) return;
+    var last = lastEntry(weightsExercise);
+    repsInput.value = last && last.reps ? last.reps : "";
+    kgInput.value = last && last.weightKg != null ? last.weightKg : EXERCISES[weightsExercise].defaultKg;
+    weightsDirty = false;
+  }
+
+  function renderWeightsView() {
+    var sessions = weightsSessions();
+    var todayKey = dateKey(new Date());
+    var todays = sessions.filter(function (s) { return dateKey(new Date(s.completedAt)) === todayKey; });
+    var todayReps = todays.reduce(function (a, s) { return a + (s.reps || 0); }, 0);
+    weightsToday.textContent = todays.length
+      ? "Today: " + todays.length + (todays.length === 1 ? " workout" : " workouts") + " · " + todayReps.toLocaleString() + " reps"
+      : "Nothing logged today yet.";
+
+    Array.prototype.forEach.call(exerciseRow.children, function (b) { b.classList.toggle("active", b.dataset.exercise === weightsExercise); });
+
+    weightsRecent.innerHTML = "";
+    var recent = sessions.sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 5);
+    if (!recent.length) {
+      weightsRecent.innerHTML = '<div class="empty-state">Nothing yet — your first workout will show up here.</div>';
+      return;
+    }
+    recent.forEach(function (s) { weightsRecent.appendChild(buildHistoryRow(s, false)); });
+  }
+
+  Array.prototype.forEach.call(exerciseRow.children, function (btn) {
+    btn.addEventListener("click", function () {
+      weightsExercise = btn.dataset.exercise;
+      weightsNote.textContent = "";
+      prefillWeightsForm(true);
+      renderWeightsView();
+    });
+  });
+
+  repsInput.addEventListener("input", function () { weightsDirty = true; });
+  kgInput.addEventListener("input", function () { weightsDirty = true; });
+
+  document.getElementById("weightsForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (logWeightsBtn.disabled) return;
+    var reps = Number(repsInput.value);
+    var kg = Number(kgInput.value);
+    if (!Number.isInteger(reps) || reps < 1 || reps > 99999) {
+      weightsNote.textContent = "Enter your reps for the whole workout — a whole number, 1 or more.";
+      repsInput.focus();
+      return;
+    }
+    if (kgInput.value === "" || !isFinite(kg) || kg < 0 || kg > 1000) {
+      weightsNote.textContent = "Enter the weight in kg — 0 for bodyweight.";
+      kgInput.focus();
+      return;
+    }
+    kg = Math.round(kg * 100) / 100;
+
+    var nowIso = new Date().toISOString();
+    var created = addSession({
+      startedAt: nowIso,
+      completedAt: nowIso,
+      durationSeconds: null,
+      mode: null,
+      targetSeconds: null,
+      completedFull: true,
+      category: "weights",
+      style: null,
+      exercise: weightsExercise,
+      reps: reps,
+      weightKg: kg
+    });
+    var cfg = loadSyncConfig();
+    if (cfg && cfg.url) pushSession(cfg, created);
+
+    weightsNote.textContent = "Logged: " + reps + " reps" + (kg ? " at " + kg + " kg" : ", bodyweight") + ". Showing up is what counts — well done.";
+    prefillWeightsForm(true);
+    refreshStats();
+
+    // a brief lock so a double-tap can't log the same workout twice
+    logWeightsBtn.disabled = true;
+    setTimeout(function () { logWeightsBtn.disabled = false; }, 900);
+  });
+
+  prefillWeightsForm(true);
+
   // ---------- Google Sheets sync ----------
 
   function setSyncStatus(text, kind) {
@@ -1607,16 +1884,22 @@
     el.className = "sync-status" + (kind ? " " + kind : "");
   }
 
+  // A blank Sheet cell means "not set"; a 0 is a real value (0 kg = bodyweight).
+  function blankToNull(v) { return v === "" || v == null ? null : Number(v); }
+
   function normalizeRemoteSession(row) {
     var session = {
       startedAt: row.startedAt,
       completedAt: row.completedAt,
-      durationSeconds: Number(row.durationSeconds),
+      durationSeconds: blankToNull(row.durationSeconds),
       mode: row.mode,
-      targetSeconds: row.targetSeconds === "" || row.targetSeconds == null ? null : Number(row.targetSeconds),
+      targetSeconds: blankToNull(row.targetSeconds),
       completedFull: row.completedFull === true || row.completedFull === "TRUE" || row.completedFull === "true",
       category: row.category || "meditation",
       style: row.style || null,
+      exercise: row.exercise || null,
+      reps: blankToNull(row.reps),
+      weightKg: blankToNull(row.weightKg),
       synced: true
     };
     // A blank id column (rows written before the id column existed, or by
