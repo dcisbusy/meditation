@@ -34,6 +34,13 @@ Sheets backend for syncing across devices.
   really ended — as soon as you come back.
 - **Session log**: every completed session is timestamped and stored
   locally, tagged with its category.
+- **Log a session you already did**: on the Timer tab, a link under the
+  main controls opens a small form — duration in minutes, when it
+  finished, and (for Meditation) an optional style — for a sit, workout or
+  writing session you did without your phone at all. It's saved exactly
+  like a timed session and counts the same for streaks and stats, just
+  marked "manual" in Recent sessions so the log stays honest about which
+  is which.
 - **Gentle stats**, based on habit-formation research (Lally et al.):
   - Habits took 18–254 days to become automatic in that research, averaging
     around two months — so the "habit journey" progress bar frames things as
@@ -120,6 +127,8 @@ fixes since:
   Weights tab. Redeploy before you start logging workouts with sync on:
   until then the Sheet, and any other device pulling from it, receives each
   workout without its reps and kg.
+- a `manual` column (also auto-added) marking sessions logged after the
+  fact rather than timed live.
 
 Pasting new code alone doesn't update a live deployment — go to **Deploy →
 Manage deployments**, click the pencil/edit icon on your existing

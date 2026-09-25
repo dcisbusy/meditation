@@ -235,6 +235,7 @@
     color: var(--text-dim);
     margin-bottom: 14px;
   }
+  .modal-evidence.err { color: var(--warn); }
 
   .modal-list {
     margin: 0 0 16px;
@@ -316,6 +317,20 @@
     margin-top: 6px;
     max-width: 320px;
   }
+
+  .text-link {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    text-decoration: underline;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-top: 10px;
+    padding: 4px;
+  }
+  .text-link:hover { color: var(--accent); }
+
+  .manual-tag { color: var(--warn); }
 
   /* ---- Streak squares (Timer view) ---- */
 
@@ -582,6 +597,7 @@
       <button id="resetBtn" class="btn-secondary" hidden>Reset</button>
     </div>
     <div id="sessionNote" class="session-note"></div>
+    <button type="button" id="manualLogOpenBtn" class="text-link">+ Log a session you already did</button>
 
     <div class="streak-card">
       <div class="streak-title" id="streakTitle"></div>
@@ -743,6 +759,30 @@
     <div class="modal-actions">
       <button id="styleModalBack" class="btn-secondary">Back</button>
       <button id="styleModalSelect" class="btn-primary">Select this style</button>
+    </div>
+  </div>
+</div>
+
+<div id="manualLogOverlay" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h2>Log a session you already did</h2>
+    <div class="modal-evidence" id="manualLogIntro">Already sat without your phone? Add it here — it counts exactly like a timed session.</div>
+    <div class="field">
+      <label for="manualMinutesInput">Duration (minutes)</label>
+      <input id="manualMinutesInput" type="number" inputmode="numeric" min="1" max="600" step="1" placeholder="e.g. 20" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="manualWhenInput">Finished at</label>
+      <input id="manualWhenInput" type="datetime-local">
+    </div>
+    <div class="field" id="manualStyleField" hidden>
+      <label>Style (optional)</label>
+      <nav class="style-row" id="manualStyleRow"></nav>
+    </div>
+    <div id="manualLogError" class="modal-evidence" hidden></div>
+    <div class="modal-actions">
+      <button id="manualLogBack" class="btn-secondary">Cancel</button>
+      <button id="manualLogSubmit" class="btn-primary">Log it</button>
     </div>
   </div>
 </div>
@@ -1220,6 +1260,103 @@
   });
   styleModalOverlay.addEventListener("click", function (e) { if (e.target === styleModalOverlay) closeStyleModal(); });
 
+  // ---------- manual "log a session you already did" ----------
+  // For sits done without a phone at all: skips the live timer entirely
+  // and produces a session identical in shape to a timed one (same fields,
+  // same stats/streak/sync handling), just tagged `manual: true` so the
+  // log stays honest about which is which.
+
+  var manualLogOverlay = document.getElementById("manualLogOverlay");
+  var manualMinutesInput = document.getElementById("manualMinutesInput");
+  var manualWhenInput = document.getElementById("manualWhenInput");
+  var manualStyleField = document.getElementById("manualStyleField");
+  var manualStyleRow = document.getElementById("manualStyleRow");
+  var manualLogError = document.getElementById("manualLogError");
+  var manualSelectedStyle = null;
+
+  manualStyleRow.innerHTML = styleRow.innerHTML;
+  Array.prototype.forEach.call(manualStyleRow.children, function (btn) {
+    btn.removeAttribute("data-cat");
+    btn.addEventListener("click", function () {
+      manualSelectedStyle = manualSelectedStyle === btn.dataset.style ? null : btn.dataset.style;
+      Array.prototype.forEach.call(manualStyleRow.children, function (b) { b.classList.toggle("active", b.dataset.style === manualSelectedStyle); });
+    });
+  });
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  // Local-time value a <input type="datetime-local"> expects, for "now".
+  function nowForDatetimeLocal() {
+    var d = new Date();
+    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+  }
+
+  function openManualLog() {
+    manualMinutesInput.value = "";
+    manualWhenInput.value = nowForDatetimeLocal();
+    manualWhenInput.max = nowForDatetimeLocal();
+    manualSelectedStyle = null;
+    Array.prototype.forEach.call(manualStyleRow.children, function (b) { b.classList.remove("active"); });
+    manualStyleField.hidden = timerCategory !== "meditation";
+    manualLogError.hidden = true;
+    manualLogOverlay.hidden = false;
+    manualMinutesInput.focus();
+  }
+
+  function closeManualLog() { manualLogOverlay.hidden = true; }
+
+  document.getElementById("manualLogOpenBtn").addEventListener("click", openManualLog);
+  document.getElementById("manualLogBack").addEventListener("click", closeManualLog);
+  manualLogOverlay.addEventListener("click", function (e) { if (e.target === manualLogOverlay) closeManualLog(); });
+
+  function manualLogFail(msg) {
+    manualLogError.textContent = msg;
+    manualLogError.className = "modal-evidence err";
+    manualLogError.hidden = false;
+  }
+
+  document.getElementById("manualLogSubmit").addEventListener("click", function () {
+    var minutes = Number(manualMinutesInput.value);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) {
+      manualLogFail("Enter how long it was, in minutes — a whole number, 1 or more.");
+      manualMinutesInput.focus();
+      return;
+    }
+    if (!manualWhenInput.value) {
+      manualLogFail("Enter when it finished.");
+      manualWhenInput.focus();
+      return;
+    }
+    var completedMs = new Date(manualWhenInput.value).getTime();
+    if (isNaN(completedMs)) {
+      manualLogFail("That finish time doesn't look right.");
+      return;
+    }
+    if (completedMs > Date.now() + 60000) {
+      manualLogFail("Pick a time that's already happened.");
+      return;
+    }
+
+    var created = addSession({
+      startedAt: new Date(completedMs - minutes * 60000).toISOString(),
+      completedAt: new Date(completedMs).toISOString(),
+      durationSeconds: minutes * 60,
+      mode: "up",
+      targetSeconds: null,
+      completedFull: true,
+      category: timerCategory,
+      style: timerCategory === "meditation" ? manualSelectedStyle : null,
+      manual: true
+    });
+
+    var cfg = loadSyncConfig();
+    if (cfg && cfg.url) pushSession(cfg, created);
+
+    closeManualLog();
+    sessionNote.textContent = "Logged — " + minutes + " min added to your " + CATEGORY_META[timerCategory].label.toLowerCase() + " log.";
+    refreshStats();
+  });
+
   // Keep the screen awake while a countdown runs, so the phone doesn't
   // time out and suspend the page before the gong. Best effort: it's
   // released automatically whenever the page is hidden, and browsers
@@ -1686,14 +1823,15 @@
 
   function entrySummary(s, showCategory) {
     var catLabel = showCategory ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
+    var manualLabel = s.manual ? ' · <span class="manual-tag">manual</span>' : "";
     if (sessionCategory(s) === "weights") {
       var ex = EXERCISES[s.exercise] ? EXERCISES[s.exercise].label : "Weights";
       var kg = kgText(s.weightKg);
-      return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel;
+      return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel + manualLabel;
     }
     var modeLabel = s.mode === "down" ? "countdown" : "count-up";
     var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
-    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel;
+    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel + manualLabel;
   }
 
   function buildHistoryRow(s, showCategory) {
@@ -1900,6 +2038,7 @@
       exercise: row.exercise || null,
       reps: blankToNull(row.reps),
       weightKg: blankToNull(row.weightKg),
+      manual: row.manual === true || row.manual === "TRUE" || row.manual === "true",
       synced: true
     };
     // A blank id column (rows written before the id column existed, or by

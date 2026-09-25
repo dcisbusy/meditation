@@ -51,13 +51,14 @@ function doPost(e) {
     // weight of 0 (bodyweight) is real, so only null/undefined is left blank.
     s.exercise || '',
     s.reps == null ? '' : s.reps,
-    s.weightKg == null ? '' : s.weightKg
+    s.weightKg == null ? '' : s.weightKg,
+    !!s.manual
   ]);
   return json_({ ok: true });
 }
 
 // Column order matters: appendRow above writes positionally.
-var COLUMNS = ['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style', 'exercise', 'reps', 'weightKg'];
+var COLUMNS = ['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style', 'exercise', 'reps', 'weightKg', 'manual'];
 
 function getSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
