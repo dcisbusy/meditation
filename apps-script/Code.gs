@@ -52,13 +52,14 @@ function doPost(e) {
     s.exercise || '',
     s.reps == null ? '' : s.reps,
     s.weightKg == null ? '' : s.weightKg,
-    !!s.manual
+    !!s.manual,
+    s.timeOfDay || ''
   ]);
   return json_({ ok: true });
 }
 
 // Column order matters: appendRow above writes positionally.
-var COLUMNS = ['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style', 'exercise', 'reps', 'weightKg', 'manual'];
+var COLUMNS = ['id', 'completedAt', 'startedAt', 'category', 'mode', 'durationSeconds', 'targetSeconds', 'completedFull', 'style', 'exercise', 'reps', 'weightKg', 'manual', 'timeOfDay'];
 
 function getSheet_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();

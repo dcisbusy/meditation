@@ -41,6 +41,18 @@ Sheets backend for syncing across devices.
   like a timed session and counts the same for streaks and stats, just
   marked "manual" in Recent sessions so the log stays honest about which
   is which.
+- **Quick log (shorthand)**: next to that, a second link opens a one-line
+  text box for logging fast or catching up on several days at once.
+  `8FW 6M` logs 8 minutes of Freewriting and 6 of Meditation today.
+  Codes: `FW` Freewriting, `M` Meditation, `B` Bodywork, `SQ` Squats,
+  `KB` Kettlebells — the number is minutes, or reps for `SQ`/`KB` (weight
+  defaults the same way the Weights tab does). Start a line with a date
+  and a colon — `28/9:` or `28/9/26:` — to log a different day, one line
+  per day, or leave it off for today. If a code appears once that day
+  it's assumed to be evening; twice, morning then evening (in the order
+  written); three or more, no time of day is guessed. Shows a live
+  preview — nothing is logged until you confirm — and every entry is
+  tagged "manual", same as the form above.
 - **Gentle stats**, based on habit-formation research (Lally et al.):
   - Habits took 18–254 days to become automatic in that research, averaging
     around two months — so the "habit journey" progress bar frames things as
@@ -128,7 +140,9 @@ fixes since:
   until then the Sheet, and any other device pulling from it, receives each
   workout without its reps and kg.
 - a `manual` column (also auto-added) marking sessions logged after the
-  fact rather than timed live.
+  fact rather than timed live;
+- a `timeOfDay` column (also auto-added) for the optional morning/
+  afternoon/evening tag, set by Quick log's shorthand entries.
 
 Pasting new code alone doesn't update a live deployment — go to **Deploy →
 Manage deployments**, click the pencil/edit icon on your existing

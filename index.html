@@ -318,6 +318,8 @@
     max-width: 320px;
   }
 
+  .log-links { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
   .text-link {
     background: none;
     border: none;
@@ -331,6 +333,40 @@
   .text-link:hover { color: var(--accent); }
 
   .manual-tag { color: var(--warn); }
+
+  .quick-log-textarea {
+    width: 100%;
+    min-height: 90px;
+    background: var(--bg-2);
+    border: 1px solid var(--accent-soft);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 10px;
+  }
+
+  .quick-log-codes {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .quick-log-codes code {
+    background: var(--bg-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+  }
+
+  .quick-log-preview { max-height: 220px; overflow-y: auto; margin-bottom: 14px; }
+  .quick-log-preview .history-item span:first-child { color: var(--text-dim); font-size: 0.8rem; }
+  .quick-log-preview .history-item span.ok { color: var(--text) !important; }
+  .quick-log-preview .history-item span.bad { color: var(--warn) !important; }
+  .quick-log-summary { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; }
+  .quick-log-summary.err { color: var(--warn); }
 
   /* ---- Streak squares (Timer view) ---- */
 
@@ -597,7 +633,10 @@
       <button id="resetBtn" class="btn-secondary" hidden>Reset</button>
     </div>
     <div id="sessionNote" class="session-note"></div>
-    <button type="button" id="manualLogOpenBtn" class="text-link">+ Log a session you already did</button>
+    <div class="log-links">
+      <button type="button" id="manualLogOpenBtn" class="text-link">+ Log a session you already did</button>
+      <button type="button" id="quickLogOpenBtn" class="text-link">+ Quick log (shorthand)</button>
+    </div>
 
     <div class="streak-card">
       <div class="streak-title" id="streakTitle"></div>
@@ -787,6 +826,22 @@
   </div>
 </div>
 
+<div id="quickLogOverlay" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h2>Quick log</h2>
+    <textarea id="quickLogTextarea" class="quick-log-textarea" placeholder="8FW 6M&#10;29/9: 5M, 10SQ, 6B, 15FW, 6M"></textarea>
+    <div class="quick-log-codes">
+      <code>FW</code> Freewriting · <code>M</code> Meditation · <code>B</code> Bodywork · <code>SQ</code> Squats · <code>KB</code> Kettlebells — number is minutes, or reps for SQ/KB. One line per day: start a line with a date (<code>28/9</code> or <code>28/9/26</code>) and a colon, or leave it off for today. One of a kind that day is logged as evening; two as morning then evening.
+    </div>
+    <div id="quickLogSummary" class="quick-log-summary">Type something above to preview it.</div>
+    <div id="quickLogPreview" class="quick-log-preview history-list"></div>
+    <div class="modal-actions">
+      <button id="quickLogBack" class="btn-secondary">Cancel</button>
+      <button id="quickLogSubmit" class="btn-primary" disabled>Log it</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   "use strict";
@@ -813,6 +868,20 @@
     kettlebells: { label: "Kettlebells", defaultKg: 8 },
     squats: { label: "Squats", defaultKg: 0 }
   };
+
+  // Shorthand codes for Quick log, e.g. "8FW 6M" or "10SQ". Order matters:
+  // BW must be tried before B so "6BW" doesn't get read as "6B" + stray "W".
+  var SHORTHAND_CODES = [
+    { code: "FW", category: "freewriting", kind: "duration" },
+    { code: "BW", category: "bodywork", kind: "duration" },
+    { code: "SQ", category: "weights", exercise: "squats", kind: "reps" },
+    { code: "KB", category: "weights", exercise: "kettlebells", kind: "reps" },
+    { code: "B", category: "bodywork", kind: "duration" },
+    { code: "M", category: "meditation", kind: "duration" }
+  ];
+  var SHORTHAND_TOKEN_RE = new RegExp("^(\\d+)\\s*(" + SHORTHAND_CODES.map(function (c) { return c.code; }).join("|") + ")$", "i");
+  var SHORTHAND_BY_CODE = {};
+  SHORTHAND_CODES.forEach(function (c) { SHORTHAND_BY_CODE[c.code] = c; });
 
   // How many consecutive missed days can sit between two done days without
   // breaking a streak. Weights aren't meant to be daily, so they get two.
@@ -1357,6 +1426,166 @@
     refreshStats();
   });
 
+  // ---------- quick log (shorthand batch entry) ----------
+  // e.g. "8FW 6M" (today) or a multi-line paste like "29/9: 5M, 10SQ, 6B".
+  // Parses the whole textarea into fully-formed sessions up front so the
+  // preview and the actual log use identical logic — what you see is
+  // exactly what gets written. Weight defaults for SQ/KB are resolved by
+  // comparing real completedAt timestamps against both existing sessions
+  // and entries earlier in the same paste, so date order in the text
+  // doesn't matter, only the dates themselves.
+
+  var quickLogOverlay = document.getElementById("quickLogOverlay");
+  var quickLogTextarea = document.getElementById("quickLogTextarea");
+  var quickLogSummary = document.getElementById("quickLogSummary");
+  var quickLogPreview = document.getElementById("quickLogPreview");
+  var quickLogSubmit = document.getElementById("quickLogSubmit");
+  var quickLogPlanned = [];
+
+  function parseDatePrefix(line) {
+    var m = line.match(/^\s*(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\s*:\s*(.*)$/);
+    if (!m) return { date: startOfDay(new Date()), rest: line };
+    var day = parseInt(m[1], 10), month = parseInt(m[2], 10);
+    var year = m[3] ? parseInt(m[3], 10) : new Date().getFullYear();
+    if (year < 100) year += 2000;
+    var d = new Date(year, month - 1, day);
+    if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return { dateError: true };
+    return { date: d, rest: m[4] };
+  }
+
+  function parseQuickLog(text) {
+    var errors = [], rawEntries = [];
+    text.split("\n").forEach(function (line, i) {
+      var trimmed = line.trim();
+      if (!trimmed) return;
+      var parsed = parseDatePrefix(trimmed);
+      if (parsed.dateError) { errors.push("Line " + (i + 1) + ": that date doesn't look right."); return; }
+      var tokens = parsed.rest.split(/[,\s]+/).filter(Boolean);
+      if (!tokens.length) { errors.push("Line " + (i + 1) + ": nothing to log after the date."); return; }
+      tokens.forEach(function (tok) {
+        var m = tok.match(SHORTHAND_TOKEN_RE);
+        if (!m || parseInt(m[1], 10) < 1) { errors.push("Line " + (i + 1) + ": didn't understand \"" + tok + "\"."); return; }
+        rawEntries.push({ date: parsed.date, code: m[2].toUpperCase(), amount: parseInt(m[1], 10), info: SHORTHAND_BY_CODE[m[2].toUpperCase()] });
+      });
+    });
+
+    // one of a kind that day -> evening; two -> morning then evening (in
+    // the order they appear); three or more -> no time-of-day guessed
+    var groups = {};
+    rawEntries.forEach(function (e) { (groups[dateKey(e.date) + "|" + e.code] = groups[dateKey(e.date) + "|" + e.code] || []).push(e); });
+    Object.keys(groups).forEach(function (key) {
+      var g = groups[key];
+      if (g.length === 1) g[0].timeOfDay = "evening";
+      else if (g.length === 2) { g[0].timeOfDay = "morning"; g[1].timeOfDay = "evening"; }
+      else g.forEach(function (e) { e.timeOfDay = null; });
+    });
+
+    var planned = [];
+    var virtualWeights = loadSessions().filter(function (s) { return sessionCategory(s) === "weights"; });
+    var slotCounts = {};
+    rawEntries.forEach(function (e) {
+      var baseHour = e.timeOfDay === "morning" ? 8 : e.timeOfDay === "evening" ? 20 : 12;
+      var slotKey = dateKey(e.date) + "|" + e.code + "|" + (e.timeOfDay || "mid");
+      var slot = (slotCounts[slotKey] = (slotCounts[slotKey] || 0) + 1);
+      var completed = new Date(e.date.getFullYear(), e.date.getMonth(), e.date.getDate(), baseHour, slot - 1, 0);
+      var when = e.timeOfDay ? " (" + e.timeOfDay + ")" : "";
+      var dateLabel = completed.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+
+      if (e.info.kind === "duration") {
+        planned.push({
+          dateLabel: dateLabel,
+          display: CATEGORY_META[e.info.category].label + " " + e.amount + "m" + when,
+          session: {
+            startedAt: new Date(completed.getTime() - e.amount * 60000).toISOString(),
+            completedAt: completed.toISOString(),
+            durationSeconds: e.amount * 60,
+            mode: "up",
+            targetSeconds: null,
+            completedFull: true,
+            category: e.info.category,
+            style: null,
+            manual: true,
+            timeOfDay: e.timeOfDay || null
+          }
+        });
+      } else {
+        var exerciseId = e.info.exercise, prior = null;
+        virtualWeights.forEach(function (s) {
+          if (s.exercise !== exerciseId) return;
+          if (!prior || new Date(s.completedAt) > new Date(prior.completedAt)) prior = s;
+        });
+        var weightKg = prior && prior.weightKg != null ? prior.weightKg : EXERCISES[exerciseId].defaultKg;
+        var sessionObj = {
+          startedAt: completed.toISOString(),
+          completedAt: completed.toISOString(),
+          durationSeconds: null,
+          mode: null,
+          targetSeconds: null,
+          completedFull: true,
+          category: "weights",
+          exercise: exerciseId,
+          reps: e.amount,
+          weightKg: weightKg,
+          manual: true,
+          timeOfDay: e.timeOfDay || null
+        };
+        virtualWeights.push(sessionObj);
+        planned.push({ dateLabel: dateLabel, display: EXERCISES[exerciseId].label + " " + e.amount + " reps @ " + kgText(weightKg) + when, session: sessionObj });
+      }
+    });
+
+    return { planned: planned, errors: errors };
+  }
+
+  function renderQuickLogPreview() {
+    var result = parseQuickLog(quickLogTextarea.value);
+    quickLogPlanned = result.errors.length ? [] : result.planned;
+
+    quickLogPreview.innerHTML = result.planned.map(function (p) {
+      return '<div class="history-item"><span class="ok">' + p.dateLabel + '</span><span>' + p.display + '</span></div>';
+    }).join("") + result.errors.map(function (e) {
+      return '<div class="history-item"><span class="bad">' + e + '</span><span></span></div>';
+    }).join("");
+
+    if (result.errors.length) {
+      quickLogSummary.textContent = result.errors.length + (result.errors.length === 1 ? " line needs fixing before you can log." : " lines need fixing before you can log.");
+      quickLogSummary.className = "quick-log-summary err";
+    } else if (!result.planned.length) {
+      quickLogSummary.textContent = "Type something above to preview it.";
+      quickLogSummary.className = "quick-log-summary";
+    } else {
+      quickLogSummary.textContent = result.planned.length + (result.planned.length === 1 ? " session ready to log." : " sessions ready to log.");
+      quickLogSummary.className = "quick-log-summary";
+    }
+    quickLogSubmit.disabled = !quickLogPlanned.length;
+  }
+
+  function openQuickLog() {
+    quickLogTextarea.value = "";
+    renderQuickLogPreview();
+    quickLogOverlay.hidden = false;
+    quickLogTextarea.focus();
+  }
+  function closeQuickLog() { quickLogOverlay.hidden = true; }
+
+  document.getElementById("quickLogOpenBtn").addEventListener("click", openQuickLog);
+  document.getElementById("quickLogBack").addEventListener("click", closeQuickLog);
+  quickLogOverlay.addEventListener("click", function (e) { if (e.target === quickLogOverlay) closeQuickLog(); });
+  quickLogTextarea.addEventListener("input", renderQuickLogPreview);
+
+  quickLogSubmit.addEventListener("click", function () {
+    if (!quickLogPlanned.length) return;
+    var cfg = loadSyncConfig();
+    quickLogPlanned.forEach(function (p) {
+      var created = addSession(p.session);
+      if (cfg && cfg.url) pushSession(cfg, created);
+    });
+    var n = quickLogPlanned.length;
+    closeQuickLog();
+    sessionNote.textContent = "Logged " + n + (n === 1 ? " session" : " sessions") + " from quick log.";
+    refreshStats();
+  });
+
   // Keep the screen awake while a countdown runs, so the phone doesn't
   // time out and suspend the page before the gong. Best effort: it's
   // released automatically whenever the page is hidden, and browsers
@@ -1823,15 +2052,16 @@
 
   function entrySummary(s, showCategory) {
     var catLabel = showCategory ? " · " + CATEGORY_META[sessionCategory(s)].label : "";
+    var timeLabel = s.timeOfDay ? " · " + s.timeOfDay : "";
     var manualLabel = s.manual ? ' · <span class="manual-tag">manual</span>' : "";
     if (sessionCategory(s) === "weights") {
       var ex = EXERCISES[s.exercise] ? EXERCISES[s.exercise].label : "Weights";
       var kg = kgText(s.weightKg);
-      return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel + manualLabel;
+      return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel + timeLabel + manualLabel;
     }
     var modeLabel = s.mode === "down" ? "countdown" : "count-up";
     var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
-    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel + manualLabel;
+    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel + timeLabel + manualLabel;
   }
 
   function buildHistoryRow(s, showCategory) {
@@ -2039,6 +2269,7 @@
       reps: blankToNull(row.reps),
       weightKg: blankToNull(row.weightKg),
       manual: row.manual === true || row.manual === "TRUE" || row.manual === "true",
+      timeOfDay: row.timeOfDay || null,
       synced: true
     };
     // A blank id column (rows written before the id column existed, or by
