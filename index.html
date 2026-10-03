@@ -235,7 +235,6 @@
     color: var(--text-dim);
     margin-bottom: 14px;
   }
-  .modal-evidence.err { color: var(--warn); }
 
   .modal-list {
     margin: 0 0 16px;
@@ -318,41 +317,40 @@
     max-width: 320px;
   }
 
-  .log-links { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-
-  .text-link {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    text-decoration: underline;
-    font-size: 0.8rem;
-    cursor: pointer;
-    margin-top: 10px;
-    padding: 4px;
-  }
-  .text-link:hover { color: var(--accent); }
-
   .manual-tag { color: var(--warn); }
+
+  /* ---- Shorthand log box (top of the main screen) ---- */
+
+  .quick-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin: 6px 0 14px;
+  }
 
   .quick-log-textarea {
     width: 100%;
-    min-height: 90px;
+    min-height: 64px;
     background: var(--bg-2);
-    border: 1px solid var(--accent-soft);
+    border: 1px solid var(--accent);
     color: var(--text);
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 0.9rem;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 1.15rem;
     font-family: inherit;
+    letter-spacing: 0.02em;
     resize: vertical;
-    margin-bottom: 10px;
   }
+  .quick-log-textarea::placeholder { font-size: 0.85rem; letter-spacing: 0; color: var(--text-dim); opacity: 0.8; }
+  .quick-log-textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .quick-log-codes {
     font-size: 0.75rem;
     color: var(--text-dim);
-    margin-bottom: 14px;
-    line-height: 1.5;
+    margin: 8px 0 2px;
+    line-height: 1.55;
   }
   .quick-log-codes code {
     background: var(--bg-2);
@@ -361,12 +359,57 @@
     font-size: 0.75rem;
   }
 
-  .quick-log-preview { max-height: 220px; overflow-y: auto; margin-bottom: 14px; }
+  .quick-log-summary { font-size: 0.8rem; color: var(--text-dim); margin-top: 10px; }
+  .quick-log-summary.err { color: var(--warn); }
+  .quick-log-summary.ok { color: var(--accent); }
+  .quick-log-preview { max-height: 180px; overflow-y: auto; margin-top: 6px; }
   .quick-log-preview .history-item span:first-child { color: var(--text-dim); font-size: 0.8rem; }
   .quick-log-preview .history-item span.ok { color: var(--text) !important; }
   .quick-log-preview .history-item span.bad { color: var(--warn) !important; }
-  .quick-log-summary { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; }
-  .quick-log-summary.err { color: var(--warn); }
+  .quick-log-btn {
+    width: 100%;
+    margin-top: 12px;
+    border: none;
+    border-radius: 999px;
+    padding: 13px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .quick-log-btn:disabled { opacity: 0.45; cursor: default; }
+  .quick-log-help { margin-top: 10px; }
+
+  /* ---- Score card (66-day, streak-weighted) ---- */
+
+  .score-card {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 0 18px;
+  }
+  .score-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .score-cell {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 10px 6px;
+    text-align: center;
+    color: var(--text);
+  }
+  .score-cell .score-name { font-size: 0.72rem; line-height: 1.2; opacity: 0.9; }
+  .score-cell .score-num { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: 2px; }
+  .score-cell .score-of { font-size: 0.65rem; opacity: 0.75; }
+  .score-cell.done { background: var(--done); color: var(--bg); }
+  .score-cell.grace { background: var(--grace); color: var(--bg); }
+  .score-cell.missed { background: var(--missed); color: var(--bg); }
+  .score-cell.none .score-num, .score-cell.none .score-of { color: var(--text-dim); }
+  .score-help { text-align: center; }
 
   /* ---- Streak squares (Timer view) ---- */
 
@@ -415,25 +458,6 @@
   .streak-legend i.done { background: var(--done); }
   .streak-legend i.grace { background: var(--grace); }
   .streak-legend i.missed { background: var(--missed); }
-
-  /* ---- Weights view ---- */
-
-  .weights-form { width: 100%; max-width: 340px; margin-top: 14px; }
-  .weights-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .weights-fields .field { margin-bottom: 0; }
-  .weights-fields input { font-size: 1.1rem; padding: 11px 12px; }
-  .weights-log {
-    width: 100%;
-    margin-top: 14px;
-    border: none;
-    border-radius: 999px;
-    padding: 14px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .weights-log:disabled { opacity: 0.55; cursor: default; }
-  .weights-recent { width: 100%; max-width: 340px; margin-top: 22px; }
 
   /* ---- Stats view ---- */
 
@@ -582,12 +606,35 @@
     <h1>sit</h1>
     <nav class="tabs">
       <button id="tabTimerBtn" class="active">Timer</button>
-      <button id="tabWeightsBtn">Weights</button>
       <button id="tabStatsBtn">Stats</button>
     </nav>
   </header>
 
   <section id="timerView" class="view active">
+    <div class="quick-card">
+      <textarea id="quickLogTextarea" class="quick-log-textarea" rows="2" placeholder="Log it: 8FW 6M 30R   (or a day: 28/9: 5M, 10SQ)" autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>
+      <div id="quickLogSummary" class="quick-log-summary" hidden></div>
+      <div id="quickLogPreview" class="quick-log-preview history-list"></div>
+      <button type="button" id="quickLogSubmit" class="btn-primary quick-log-btn" disabled>Log it</button>
+      <details class="setup-help quick-log-help">
+        <summary>Shorthand codes</summary>
+        <div class="quick-log-codes">
+          <code>FW</code> Freewriting · <code>M</code> Meditation · <code>B</code> Bodywork · <code>R</code> Running · <code>C</code> Cycling · <code>SQ</code> Squats · <code>KB</code> Kettlebells. The number is minutes (reps for SQ and KB), so <code>8FW</code> is 8 minutes of freewriting. Start a line with a date and a colon (<code>28/9:</code> or <code>28/9/26:</code>) to log another day, one line per day. One of a kind that day is logged as evening; two as morning then evening.
+        </div>
+      </details>
+    </div>
+
+    <div class="score-card">
+      <div class="score-title">Score · last 66 days</div>
+      <div class="score-grid" id="scoreGrid"></div>
+      <details class="setup-help score-help">
+        <summary>How is this scored?</summary>
+        <div class="quick-log-codes">
+          Each day you do an activity scores the number of days in its current streak, up to 7. Add up the last 66 days: the best possible is 462. Several sessions in one day count once. For meditation, bodywork and freewriting, one skipped day between two done days keeps the streak going (and scores 0). Green is 90% or more of 462, orange is 75% or more. Weights, running and cycling are not daily: the streak holds while you've done it on at least 2 of the last 7 days, and green is 150 or more, orange 112 or more.
+        </div>
+      </details>
+    </div>
+
     <nav class="category-tabs" id="timerCatRow">
       <button data-cat="meditation">🧘 Meditation</button>
       <button data-cat="bodywork">🤸 Bodywork</button>
@@ -633,10 +680,6 @@
       <button id="resetBtn" class="btn-secondary" hidden>Reset</button>
     </div>
     <div id="sessionNote" class="session-note"></div>
-    <div class="log-links">
-      <button type="button" id="manualLogOpenBtn" class="text-link">+ Log a session you already did</button>
-      <button type="button" id="quickLogOpenBtn" class="text-link">+ Quick log (shorthand)</button>
-    </div>
 
     <div class="streak-card">
       <div class="streak-title" id="streakTitle"></div>
@@ -655,50 +698,6 @@
     </div>
   </section>
 
-  <section id="weightsView" class="view">
-    <nav class="category-tabs" id="exerciseRow">
-      <button data-exercise="kettlebells">Kettlebells</button>
-      <button data-exercise="squats">Squats</button>
-    </nav>
-
-    <form id="weightsForm" class="weights-form" novalidate>
-      <div class="weights-fields">
-        <div class="field">
-          <label for="repsInput">Reps (whole workout)</label>
-          <input id="repsInput" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 50" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="kgInput">Weight (kg)</label>
-          <input id="kgInput" type="number" inputmode="decimal" min="0" step="0.5" autocomplete="off">
-        </div>
-      </div>
-      <button type="submit" id="logWeightsBtn" class="btn-primary weights-log">Log workout</button>
-    </form>
-    <div id="weightsNote" class="session-note"></div>
-    <div id="weightsToday" class="session-note"></div>
-
-    <div class="streak-card">
-      <div class="streak-title" id="weightsStreakTitle"></div>
-      <div class="streak-body">
-        <div class="streak-count">
-          <div class="streak-num" id="weightsStreakNum">0</div>
-          <div class="streak-label">day streak</div>
-        </div>
-        <div class="streak-grid" id="weightsStreakGrid"></div>
-      </div>
-      <div class="streak-legend">
-        <span><i class="done"></i>done</span>
-        <span><i class="grace"></i>skipped 1–2 days, streak kept</span>
-        <span><i class="missed"></i>missed</span>
-      </div>
-    </div>
-
-    <div class="card weights-recent">
-      <h2>Recent workouts</h2>
-      <div id="weightsRecent" class="history-list"><div class="empty-state">Nothing yet — your first workout will show up here.</div></div>
-    </div>
-  </section>
-
   <section id="statsView" class="view">
     <div class="stats-scroll">
 
@@ -708,6 +707,8 @@
         <button data-cat="bodywork">🤸 Bodywork</button>
         <button data-cat="freewriting">✍️ Freewriting</button>
         <button data-cat="weights">🏋️ Weights</button>
+        <button data-cat="running">🏃 Running</button>
+        <button data-cat="cycling">🚴 Cycling</button>
       </nav>
 
       <div class="card">
@@ -802,46 +803,6 @@
   </div>
 </div>
 
-<div id="manualLogOverlay" class="modal-overlay" hidden>
-  <div class="modal-box">
-    <h2>Log a session you already did</h2>
-    <div class="modal-evidence" id="manualLogIntro">Already sat without your phone? Add it here — it counts exactly like a timed session.</div>
-    <div class="field">
-      <label for="manualMinutesInput">Duration (minutes)</label>
-      <input id="manualMinutesInput" type="number" inputmode="numeric" min="1" max="600" step="1" placeholder="e.g. 20" autocomplete="off">
-    </div>
-    <div class="field">
-      <label for="manualWhenInput">Finished at</label>
-      <input id="manualWhenInput" type="datetime-local">
-    </div>
-    <div class="field" id="manualStyleField" hidden>
-      <label>Style (optional)</label>
-      <nav class="style-row" id="manualStyleRow"></nav>
-    </div>
-    <div id="manualLogError" class="modal-evidence" hidden></div>
-    <div class="modal-actions">
-      <button id="manualLogBack" class="btn-secondary">Cancel</button>
-      <button id="manualLogSubmit" class="btn-primary">Log it</button>
-    </div>
-  </div>
-</div>
-
-<div id="quickLogOverlay" class="modal-overlay" hidden>
-  <div class="modal-box">
-    <h2>Quick log</h2>
-    <textarea id="quickLogTextarea" class="quick-log-textarea" placeholder="8FW 6M&#10;29/9: 5M, 10SQ, 6B, 15FW, 6M"></textarea>
-    <div class="quick-log-codes">
-      <code>FW</code> Freewriting · <code>M</code> Meditation · <code>B</code> Bodywork · <code>SQ</code> Squats · <code>KB</code> Kettlebells — number is minutes, or reps for SQ/KB. One line per day: start a line with a date (<code>28/9</code> or <code>28/9/26</code>) and a colon, or leave it off for today. One of a kind that day is logged as evening; two as morning then evening.
-    </div>
-    <div id="quickLogSummary" class="quick-log-summary">Type something above to preview it.</div>
-    <div id="quickLogPreview" class="quick-log-preview history-list"></div>
-    <div class="modal-actions">
-      <button id="quickLogBack" class="btn-secondary">Cancel</button>
-      <button id="quickLogSubmit" class="btn-primary" disabled>Log it</button>
-    </div>
-  </div>
-</div>
-
 <script>
 (function () {
   "use strict";
@@ -856,10 +817,13 @@
     meditation: { label: "Meditation", icon: "🧘", noun: "sit", verb: "Sitting" },
     bodywork: { label: "Bodywork", icon: "🤸", noun: "session", verb: "Moving" },
     freewriting: { label: "Freewriting", icon: "✍️", noun: "session", verb: "Writing" },
-    weights: { label: "Weights", icon: "🏋️", noun: "workout", verb: "Lifting", reps: true }
+    weights: { label: "Weights", icon: "🏋️", noun: "workout", verb: "Lifting", reps: true },
+    running: { label: "Running", icon: "🏃", noun: "run", verb: "Running" },
+    cycling: { label: "Cycling", icon: "🚴", noun: "ride", verb: "Cycling" }
   };
 
-  // Practices you time on the Timer tab; Weights is logged by reps instead.
+  // Practices you time on the Timer tab. Weights, running and cycling are
+  // logged by hand with the shorthand box instead.
   var TIMED_CATEGORIES = ["meditation", "bodywork", "freewriting"];
 
   // The habit is "Weights"; the exercise is just a detail on each entry,
@@ -877,7 +841,9 @@
     { code: "SQ", category: "weights", exercise: "squats", kind: "reps" },
     { code: "KB", category: "weights", exercise: "kettlebells", kind: "reps" },
     { code: "B", category: "bodywork", kind: "duration" },
-    { code: "M", category: "meditation", kind: "duration" }
+    { code: "M", category: "meditation", kind: "duration" },
+    { code: "R", category: "running", kind: "duration" },
+    { code: "C", category: "cycling", kind: "duration" }
   ];
   var SHORTHAND_TOKEN_RE = new RegExp("^(\\d+)\\s*(" + SHORTHAND_CODES.map(function (c) { return c.code; }).join("|") + ")$", "i");
   var SHORTHAND_BY_CODE = {};
@@ -885,7 +851,7 @@
 
   // How many consecutive missed days can sit between two done days without
   // breaking a streak. Weights aren't meant to be daily, so they get two.
-  var GRACE_DAYS = { weights: 2 };
+  var GRACE_DAYS = { weights: 2, running: 2, cycling: 2 };
   function graceFor(cat) { return GRACE_DAYS[cat] || 1; }
 
   // Optional meditation "styles" — a short evidence blurb plus a few
@@ -1329,103 +1295,6 @@
   });
   styleModalOverlay.addEventListener("click", function (e) { if (e.target === styleModalOverlay) closeStyleModal(); });
 
-  // ---------- manual "log a session you already did" ----------
-  // For sits done without a phone at all: skips the live timer entirely
-  // and produces a session identical in shape to a timed one (same fields,
-  // same stats/streak/sync handling), just tagged `manual: true` so the
-  // log stays honest about which is which.
-
-  var manualLogOverlay = document.getElementById("manualLogOverlay");
-  var manualMinutesInput = document.getElementById("manualMinutesInput");
-  var manualWhenInput = document.getElementById("manualWhenInput");
-  var manualStyleField = document.getElementById("manualStyleField");
-  var manualStyleRow = document.getElementById("manualStyleRow");
-  var manualLogError = document.getElementById("manualLogError");
-  var manualSelectedStyle = null;
-
-  manualStyleRow.innerHTML = styleRow.innerHTML;
-  Array.prototype.forEach.call(manualStyleRow.children, function (btn) {
-    btn.removeAttribute("data-cat");
-    btn.addEventListener("click", function () {
-      manualSelectedStyle = manualSelectedStyle === btn.dataset.style ? null : btn.dataset.style;
-      Array.prototype.forEach.call(manualStyleRow.children, function (b) { b.classList.toggle("active", b.dataset.style === manualSelectedStyle); });
-    });
-  });
-
-  function pad2(n) { return (n < 10 ? "0" : "") + n; }
-
-  // Local-time value a <input type="datetime-local"> expects, for "now".
-  function nowForDatetimeLocal() {
-    var d = new Date();
-    return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
-  }
-
-  function openManualLog() {
-    manualMinutesInput.value = "";
-    manualWhenInput.value = nowForDatetimeLocal();
-    manualWhenInput.max = nowForDatetimeLocal();
-    manualSelectedStyle = null;
-    Array.prototype.forEach.call(manualStyleRow.children, function (b) { b.classList.remove("active"); });
-    manualStyleField.hidden = timerCategory !== "meditation";
-    manualLogError.hidden = true;
-    manualLogOverlay.hidden = false;
-    manualMinutesInput.focus();
-  }
-
-  function closeManualLog() { manualLogOverlay.hidden = true; }
-
-  document.getElementById("manualLogOpenBtn").addEventListener("click", openManualLog);
-  document.getElementById("manualLogBack").addEventListener("click", closeManualLog);
-  manualLogOverlay.addEventListener("click", function (e) { if (e.target === manualLogOverlay) closeManualLog(); });
-
-  function manualLogFail(msg) {
-    manualLogError.textContent = msg;
-    manualLogError.className = "modal-evidence err";
-    manualLogError.hidden = false;
-  }
-
-  document.getElementById("manualLogSubmit").addEventListener("click", function () {
-    var minutes = Number(manualMinutesInput.value);
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) {
-      manualLogFail("Enter how long it was, in minutes — a whole number, 1 or more.");
-      manualMinutesInput.focus();
-      return;
-    }
-    if (!manualWhenInput.value) {
-      manualLogFail("Enter when it finished.");
-      manualWhenInput.focus();
-      return;
-    }
-    var completedMs = new Date(manualWhenInput.value).getTime();
-    if (isNaN(completedMs)) {
-      manualLogFail("That finish time doesn't look right.");
-      return;
-    }
-    if (completedMs > Date.now() + 60000) {
-      manualLogFail("Pick a time that's already happened.");
-      return;
-    }
-
-    var created = addSession({
-      startedAt: new Date(completedMs - minutes * 60000).toISOString(),
-      completedAt: new Date(completedMs).toISOString(),
-      durationSeconds: minutes * 60,
-      mode: "up",
-      targetSeconds: null,
-      completedFull: true,
-      category: timerCategory,
-      style: timerCategory === "meditation" ? manualSelectedStyle : null,
-      manual: true
-    });
-
-    var cfg = loadSyncConfig();
-    if (cfg && cfg.url) pushSession(cfg, created);
-
-    closeManualLog();
-    sessionNote.textContent = "Logged — " + minutes + " min added to your " + CATEGORY_META[timerCategory].label.toLowerCase() + " log.";
-    refreshStats();
-  });
-
   // ---------- quick log (shorthand batch entry) ----------
   // e.g. "8FW 6M" (today) or a multi-line paste like "29/9: 5M, 10SQ, 6B".
   // Parses the whole textarea into fully-formed sessions up front so the
@@ -1435,7 +1304,6 @@
   // and entries earlier in the same paste, so date order in the text
   // doesn't matter, only the dates themselves.
 
-  var quickLogOverlay = document.getElementById("quickLogOverlay");
   var quickLogTextarea = document.getElementById("quickLogTextarea");
   var quickLogSummary = document.getElementById("quickLogSummary");
   var quickLogPreview = document.getElementById("quickLogPreview");
@@ -1538,7 +1406,8 @@
   }
 
   function renderQuickLogPreview() {
-    var result = parseQuickLog(quickLogTextarea.value);
+    var text = quickLogTextarea.value;
+    var result = parseQuickLog(text);
     quickLogPlanned = result.errors.length ? [] : result.planned;
 
     quickLogPreview.innerHTML = result.planned.map(function (p) {
@@ -1547,12 +1416,10 @@
       return '<div class="history-item"><span class="bad">' + e + '</span><span></span></div>';
     }).join("");
 
+    quickLogSummary.hidden = !text.trim();
     if (result.errors.length) {
       quickLogSummary.textContent = result.errors.length + (result.errors.length === 1 ? " line needs fixing before you can log." : " lines need fixing before you can log.");
       quickLogSummary.className = "quick-log-summary err";
-    } else if (!result.planned.length) {
-      quickLogSummary.textContent = "Type something above to preview it.";
-      quickLogSummary.className = "quick-log-summary";
     } else {
       quickLogSummary.textContent = result.planned.length + (result.planned.length === 1 ? " session ready to log." : " sessions ready to log.");
       quickLogSummary.className = "quick-log-summary";
@@ -1560,17 +1427,6 @@
     quickLogSubmit.disabled = !quickLogPlanned.length;
   }
 
-  function openQuickLog() {
-    quickLogTextarea.value = "";
-    renderQuickLogPreview();
-    quickLogOverlay.hidden = false;
-    quickLogTextarea.focus();
-  }
-  function closeQuickLog() { quickLogOverlay.hidden = true; }
-
-  document.getElementById("quickLogOpenBtn").addEventListener("click", openQuickLog);
-  document.getElementById("quickLogBack").addEventListener("click", closeQuickLog);
-  quickLogOverlay.addEventListener("click", function (e) { if (e.target === quickLogOverlay) closeQuickLog(); });
   quickLogTextarea.addEventListener("input", renderQuickLogPreview);
 
   quickLogSubmit.addEventListener("click", function () {
@@ -1581,8 +1437,11 @@
       if (cfg && cfg.url) pushSession(cfg, created);
     });
     var n = quickLogPlanned.length;
-    closeQuickLog();
-    sessionNote.textContent = "Logged " + n + (n === 1 ? " session" : " sessions") + " from quick log.";
+    quickLogTextarea.value = "";
+    renderQuickLogPreview();
+    quickLogSummary.hidden = false;
+    quickLogSummary.textContent = "Logged " + n + (n === 1 ? " session." : " sessions.");
+    quickLogSummary.className = "quick-log-summary ok";
     refreshStats();
   });
 
@@ -1724,7 +1583,6 @@
 
   var TABS = {
     timer: [document.getElementById("tabTimerBtn"), document.getElementById("timerView")],
-    weights: [document.getElementById("tabWeightsBtn"), document.getElementById("weightsView")],
     stats: [document.getElementById("tabStatsBtn"), document.getElementById("statsView")]
   };
   var lastAutoPull = 0;
@@ -1735,7 +1593,6 @@
       TABS[k][1].classList.toggle("active", k === name);
     });
     if (name === "timer") return;
-    if (name === "weights") prefillWeightsForm(false);
     refreshStats();
     var cfg = loadSyncConfig();
     if (cfg && cfg.url && Date.now() - lastAutoPull > 15000) {
@@ -1822,7 +1679,7 @@
   // Colour the practice buttons (Timer and Stats tabs) by what today would
   // be if you did nothing more, assuming you do it tomorrow: green = done
   // today, orange = not yet today but done within the allowed gap (1 day,
-  // or 2 for Weights), red = neither. A practice with no sessions at all
+  // or 2 for Weights, Running and Cycling), red = neither. A practice with no sessions at all
   // is left uncoloured; "All" counts a session in any practice.
   function renderCategoryTabColours() {
     var sessions = loadSessions();
@@ -1852,13 +1709,11 @@
   }
 
   // Five Monday-first weeks ending with the current one: for the practice
-  // selected on the Timer tab, and for Weights on the Weights tab.
+  // selected on the Timer tab.
   var TIMER_STREAK_IDS = { title: "streakTitle", num: "streakNum", grid: "streakGrid" };
-  var WEIGHTS_STREAK_IDS = { title: "weightsStreakTitle", num: "weightsStreakNum", grid: "weightsStreakGrid" };
 
   function renderStreakStrip() {
     renderStreakCard(timerCategory, TIMER_STREAK_IDS);
-    renderStreakCard("weights", WEIGHTS_STREAK_IDS);
   }
 
   function renderStreakCard(cat, ids) {
@@ -1976,7 +1831,83 @@
     renderStyleBreakdown(sessions, meta);
     renderStreakStrip();
     renderCategoryTabColours();
-    renderWeightsView();
+    renderScores();
+  }
+
+  // ---------- 66-day activity scores ----------
+  // Every day you did an activity scores the length of its current streak,
+  // capped at 7; add up the last 66 days (today included), so 66 x 7 = 462
+  // is the most anyone can score. Several sessions in a day count once.
+  //
+  // Daily activities: a missed day resets the streak, except that a single
+  // skipped day between two done days keeps it alive (and scores 0).
+  // Flexible activities (weights, running, cycling): the streak holds, rest
+  // days included, while the activity was done on at least 2 of the 7 days
+  // ending that day.
+  var SCORE_CATEGORIES = ["meditation", "bodywork", "freewriting", "weights", "running", "cycling"];
+  var FLEXIBLE_CATEGORIES = { weights: true, running: true, cycling: true };
+  var SCORE_DAYS = 66, SCORE_STREAK_CAP = 7, SCORE_MAX = SCORE_DAYS * SCORE_STREAK_CAP;
+  var FLEX_MIN_IN_WEEK = 2;
+  var DAILY_GREEN = 0.9, DAILY_ORANGE = 0.75;      // share of SCORE_MAX
+  var FLEX_GREEN = 150, FLEX_ORANGE = 112;         // points
+
+  function computeActivityScore(sessions, cat) {
+    var doneKeys = {}, seen = false;
+    sessions.forEach(function (s) {
+      if (sessionCategory(s) !== cat) return;
+      seen = true;
+      doneKeys[dateKey(new Date(s.completedAt))] = true;
+    });
+
+    // Extra days before the window so streaks already running at its start
+    // are scored properly: a run is capped at 7 days, and each flexible
+    // streak day looks back a further 6.
+    var lead = SCORE_STREAK_CAP - 1 + 6;
+    var today = startOfDay(new Date());
+    var n = SCORE_DAYS + lead;
+    var done = [];
+    for (var i = 0; i < n; i++) done.push(!!doneKeys[dateKey(addDays(today, i - (n - 1)))]);
+
+    var flexible = !!FLEXIBLE_CATEGORIES[cat];
+    var run = 0, score = 0;
+    for (var j = 0; j < n; j++) {
+      var inStreak = done[j];
+      if (!inStreak) {
+        if (flexible) {
+          var inWeek = 0;
+          for (var k = Math.max(0, j - 6); k <= j; k++) if (done[k]) inWeek++;
+          inStreak = inWeek >= FLEX_MIN_IN_WEEK;
+        } else {
+          inStreak = j > 0 && j < n - 1 && done[j - 1] && done[j + 1];
+        }
+      }
+      run = inStreak ? run + 1 : 0;
+      if (done[j] && j >= lead) score += Math.min(run, SCORE_STREAK_CAP);
+    }
+    return { seen: seen, score: score };
+  }
+
+  function scoreRag(cat, r) {
+    if (!r.seen) return "none";
+    if (FLEXIBLE_CATEGORIES[cat]) return r.score >= FLEX_GREEN ? "done" : r.score >= FLEX_ORANGE ? "grace" : "missed";
+    return r.score / SCORE_MAX >= DAILY_GREEN ? "done" : r.score / SCORE_MAX >= DAILY_ORANGE ? "grace" : "missed";
+  }
+
+  function renderScores() {
+    var sessions = loadSessions();
+    document.getElementById("scoreGrid").innerHTML = SCORE_CATEGORIES.map(function (cat) {
+      var r = computeActivityScore(sessions, cat);
+      var rag = scoreRag(cat, r);
+      var meta = CATEGORY_META[cat];
+      var detail = !r.seen ? "not logged yet"
+        : FLEXIBLE_CATEGORIES[cat] ? "green " + FLEX_GREEN + "+, orange " + FLEX_ORANGE + "+"
+        : Math.round(r.score / SCORE_MAX * 100) + "% of " + SCORE_MAX + " (green 90%+, orange 75%+)";
+      var title = meta.label + ": " + r.score + " — " + detail;
+      return '<div class="score-cell ' + rag + '" title="' + title + '" aria-label="' + title + '">' +
+        '<div class="score-name">' + meta.icon + " " + meta.label + '</div>' +
+        '<div class="score-num">' + (r.seen ? r.score : "–") + '</div>' +
+        '<div class="score-of">' + (r.seen && !FLEXIBLE_CATEGORIES[cat] ? "of " + SCORE_MAX : "&nbsp;") + '</div></div>';
+    }).join("");
   }
 
   function kgText(kg) {
@@ -2059,9 +1990,9 @@
       var kg = kgText(s.weightKg);
       return (s.reps || 0) + " reps" + (kg ? " · " + kg : "") + " · " + ex + catLabel + timeLabel + manualLabel;
     }
-    var modeLabel = s.mode === "down" ? "countdown" : "count-up";
+    var modeLabel = s.manual ? "" : " · " + (s.mode === "down" ? "countdown" : "count-up");
     var styleLabel = s.style && STYLE_BY_ID[s.style] ? " · " + STYLE_BY_ID[s.style].label : "";
-    return fmtDuration(s.durationSeconds || 0) + " · " + modeLabel + catLabel + styleLabel + timeLabel + manualLabel;
+    return fmtDuration(s.durationSeconds || 0) + modeLabel + catLabel + styleLabel + timeLabel + manualLabel;
   }
 
   function buildHistoryRow(s, showCategory) {
@@ -2125,124 +2056,6 @@
       refreshStats();
     }
   });
-
-  // ---------- weights (logged by reps, not timed) ----------
-
-  var exerciseRow = document.getElementById("exerciseRow");
-  var repsInput = document.getElementById("repsInput");
-  var kgInput = document.getElementById("kgInput");
-  var logWeightsBtn = document.getElementById("logWeightsBtn");
-  var weightsNote = document.getElementById("weightsNote");
-  var weightsToday = document.getElementById("weightsToday");
-  var weightsRecent = document.getElementById("weightsRecent");
-  var weightsDirty = false;   // true once you've typed in the form
-
-  function weightsSessions() {
-    return loadSessions().filter(function (s) { return sessionCategory(s) === "weights"; });
-  }
-
-  // Most recent weights entry, optionally for one exercise. Reading it from
-  // the log (rather than a per-device setting) means your last values
-  // follow you to every device that syncs.
-  function lastEntry(exercise) {
-    var best = null;
-    weightsSessions().forEach(function (s) {
-      if (exercise && s.exercise !== exercise) return;
-      if (!best || new Date(s.completedAt) > new Date(best.completedAt)) best = s;
-    });
-    return best;
-  }
-
-  var lastUsed = lastEntry(null);
-  var weightsExercise = lastUsed && EXERCISES[lastUsed.exercise] ? lastUsed.exercise : "kettlebells";
-
-  // Fill the form from your last entry for the selected exercise, or the
-  // defaults (8 kg kettlebells, bodyweight squats) if there isn't one. Skipped
-  // while you're mid-typing unless forced.
-  function prefillWeightsForm(force) {
-    if (weightsDirty && !force) return;
-    var last = lastEntry(weightsExercise);
-    repsInput.value = last && last.reps ? last.reps : "";
-    kgInput.value = last && last.weightKg != null ? last.weightKg : EXERCISES[weightsExercise].defaultKg;
-    weightsDirty = false;
-  }
-
-  function renderWeightsView() {
-    var sessions = weightsSessions();
-    var todayKey = dateKey(new Date());
-    var todays = sessions.filter(function (s) { return dateKey(new Date(s.completedAt)) === todayKey; });
-    var todayReps = todays.reduce(function (a, s) { return a + (s.reps || 0); }, 0);
-    weightsToday.textContent = todays.length
-      ? "Today: " + todays.length + (todays.length === 1 ? " workout" : " workouts") + " · " + todayReps.toLocaleString() + " reps"
-      : "Nothing logged today yet.";
-
-    Array.prototype.forEach.call(exerciseRow.children, function (b) { b.classList.toggle("active", b.dataset.exercise === weightsExercise); });
-
-    weightsRecent.innerHTML = "";
-    var recent = sessions.sort(function (a, b) { return new Date(b.completedAt) - new Date(a.completedAt); }).slice(0, 5);
-    if (!recent.length) {
-      weightsRecent.innerHTML = '<div class="empty-state">Nothing yet — your first workout will show up here.</div>';
-      return;
-    }
-    recent.forEach(function (s) { weightsRecent.appendChild(buildHistoryRow(s, false)); });
-  }
-
-  Array.prototype.forEach.call(exerciseRow.children, function (btn) {
-    btn.addEventListener("click", function () {
-      weightsExercise = btn.dataset.exercise;
-      weightsNote.textContent = "";
-      prefillWeightsForm(true);
-      renderWeightsView();
-    });
-  });
-
-  repsInput.addEventListener("input", function () { weightsDirty = true; });
-  kgInput.addEventListener("input", function () { weightsDirty = true; });
-
-  document.getElementById("weightsForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    if (logWeightsBtn.disabled) return;
-    var reps = Number(repsInput.value);
-    var kg = Number(kgInput.value);
-    if (!Number.isInteger(reps) || reps < 1 || reps > 99999) {
-      weightsNote.textContent = "Enter your reps for the whole workout — a whole number, 1 or more.";
-      repsInput.focus();
-      return;
-    }
-    if (kgInput.value === "" || !isFinite(kg) || kg < 0 || kg > 1000) {
-      weightsNote.textContent = "Enter the weight in kg — 0 for bodyweight.";
-      kgInput.focus();
-      return;
-    }
-    kg = Math.round(kg * 100) / 100;
-
-    var nowIso = new Date().toISOString();
-    var created = addSession({
-      startedAt: nowIso,
-      completedAt: nowIso,
-      durationSeconds: null,
-      mode: null,
-      targetSeconds: null,
-      completedFull: true,
-      category: "weights",
-      style: null,
-      exercise: weightsExercise,
-      reps: reps,
-      weightKg: kg
-    });
-    var cfg = loadSyncConfig();
-    if (cfg && cfg.url) pushSession(cfg, created);
-
-    weightsNote.textContent = "Logged: " + reps + " reps" + (kg ? " at " + kg + " kg" : ", bodyweight") + ". Showing up is what counts — well done.";
-    prefillWeightsForm(true);
-    refreshStats();
-
-    // a brief lock so a double-tap can't log the same workout twice
-    logWeightsBtn.disabled = true;
-    setTimeout(function () { logWeightsBtn.disabled = false; }, 900);
-  });
-
-  prefillWeightsForm(true);
 
   // ---------- Google Sheets sync ----------
 
@@ -2364,6 +2177,7 @@
     if (running) render();
     renderStreakStrip();
     renderCategoryTabColours();
+    renderScores();
   });
 
   // keep tab title reflecting a running timer so it's visible when switching apps

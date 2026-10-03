@@ -1,26 +1,45 @@
 # Sit — a tiny practice timer
 
-A single-page timer for meditation, bodywork, or freewriting, deployed via
+A single-page habit log and timer for meditation, bodywork, freewriting,
+weights, running and cycling, deployed via
 GitHub Pages. No build step, no required backend — everything lives in
 `index.html` and your browser's `localStorage`, with an optional Google
 Sheets backend for syncing across devices.
 
 ## Features
 
-- **Three timed practice categories** — Meditation, Bodywork, Freewriting —
-  each with their own stats page. Pick a category before you start; it's
-  remembered next time you open the app.
-- **Weights (logged by reps, not time)**: its own tab, with Kettlebells and
-  Squats. Enter the reps for the whole workout and the weight in kg, then
-  **Log workout**. The habit is "Weights", not the exercise — like a
-  meditation style, the exercise is just a detail on each entry, so one
-  streak covers both. Weight defaults to 8 kg for kettlebells and 0 kg
-  (bodyweight) for squats, then remembers your last reps and weight for each
-  exercise; that's read from the log itself, so it follows you across synced
-  devices. No targets. Weights aren't meant to be daily, so a streak
-  survives **up to two** skipped days between days you lifted (Meditation,
-  Bodywork and Freewriting still allow one); the Stats tab has a Weights view
-  with total reps, best workout and heaviest weight.
+- **Shorthand log box (the main way to log)**: at the top of the main
+  screen, a text box for logging fast, or catching up on several days at
+  once. `8FW 6M 30R` logs 8 minutes of Freewriting, 6 of Meditation and 30
+  of Running today. Codes: `FW` Freewriting, `M` Meditation, `B` (or `BW`)
+  Bodywork, `R` Running, `C` Cycling, `SQ` Squats, `KB` Kettlebells — the
+  number is minutes, or reps for `SQ`/`KB` (weight defaults to 0 kg for
+  squats and 8 kg for kettlebells, then repeats your last weight for that
+  exercise). Start a line with a date and a colon — `28/9:` or
+  `28/9/26:` — to log a different day, one line per day, or leave it off
+  for today. If a code appears once that day it's assumed to be evening;
+  twice, morning then evening (in the order written); three or more, no
+  time of day is guessed. A live preview shows exactly what will be
+  logged, a line it can't read blocks the button until fixed, and every
+  entry is tagged "manual" in Recent sessions.
+- **Score (last 66 days)**: under the box, one score per activity —
+  Meditation, Bodywork, Freewriting, Weights, Running, Cycling. Each day
+  you did an activity scores the number of days in its current streak, up
+  to 7; add up the last 66 days, so 462 is the best possible. Several
+  sessions in one day count once. For the daily activities (Meditation,
+  Bodywork, Freewriting) one skipped day between two done days keeps the
+  streak alive and scores 0; green is 90% or more of 462, orange 75% or
+  more, red below. Weights, Running and Cycling aren't meant to be daily:
+  their streak holds, rest days included, while you've done them on at
+  least 2 of the last 7 days, and green is 150 or more, orange 112 or
+  more (a steady 3 a week scores about 196). An activity you've never
+  logged shows neutral. The thresholds and rules are constants at the top
+  of the scoring section in `index.html`.
+- **Three timed practices** — Meditation, Bodywork, Freewriting — are
+  timed on the main screen: pick one, then Start. Weights, Running and
+  Cycling are logged with the shorthand box only (there is no timer or
+  form for them). All six have a view on the Stats tab; Weights shows
+  total reps, best workout and heaviest weight instead of time.
 - **Count up** (default): an open-ended stopwatch for a session with no
   fixed length.
 - **Count down**: 2 / 5 / 10 minute presets. Ends itself with a deep,
@@ -34,25 +53,6 @@ Sheets backend for syncing across devices.
   really ended — as soon as you come back.
 - **Session log**: every completed session is timestamped and stored
   locally, tagged with its category.
-- **Log a session you already did**: on the Timer tab, a link under the
-  main controls opens a small form — duration in minutes, when it
-  finished, and (for Meditation) an optional style — for a sit, workout or
-  writing session you did without your phone at all. It's saved exactly
-  like a timed session and counts the same for streaks and stats, just
-  marked "manual" in Recent sessions so the log stays honest about which
-  is which.
-- **Quick log (shorthand)**: next to that, a second link opens a one-line
-  text box for logging fast or catching up on several days at once.
-  `8FW 6M` logs 8 minutes of Freewriting and 6 of Meditation today.
-  Codes: `FW` Freewriting, `M` Meditation, `B` Bodywork, `SQ` Squats,
-  `KB` Kettlebells — the number is minutes, or reps for `SQ`/`KB` (weight
-  defaults the same way the Weights tab does). Start a line with a date
-  and a colon — `28/9:` or `28/9/26:` — to log a different day, one line
-  per day, or leave it off for today. If a code appears once that day
-  it's assumed to be evening; twice, morning then evening (in the order
-  written); three or more, no time of day is guessed. Shows a live
-  preview — nothing is logged until you confirm — and every entry is
-  tagged "manual", same as the form above.
 - **Gentle stats**, based on habit-formation research (Lally et al.):
   - Habits took 18–254 days to become automatic in that research, averaging
     around two months — so the "habit journey" progress bar frames things as
@@ -135,14 +135,14 @@ fixes since:
   text so Sheets can't silently reformat them;
 - a `style` column (auto-added to existing sheets too) for the optional
   meditation styles feature below;
-- `exercise`, `reps` and `weightKg` columns (also auto-added) for the
-  Weights tab. Redeploy before you start logging workouts with sync on:
-  until then the Sheet, and any other device pulling from it, receives each
-  workout without its reps and kg.
+- `exercise`, `reps` and `weightKg` columns (also auto-added) for squat
+  and kettlebell entries. Redeploy before you log those with sync on: until
+  then the Sheet, and any other device pulling from it, receives each one
+  without its reps and kg.
 - a `manual` column (also auto-added) marking sessions logged after the
   fact rather than timed live;
 - a `timeOfDay` column (also auto-added) for the optional morning/
-  afternoon/evening tag, set by Quick log's shorthand entries.
+  afternoon/evening tag, set by the shorthand log box.
 
 Pasting new code alone doesn't update a live deployment — go to **Deploy →
 Manage deployments**, click the pencil/edit icon on your existing
